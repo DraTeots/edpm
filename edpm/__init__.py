@@ -1,0 +1,1 @@
+from edpm.version import version, version_tuple

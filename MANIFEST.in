@@ -1,0 +1,6 @@
+exclude .gitignore
+exclude run_edpm.py
+exclude containers
+
+include pip_readme.md
+recursive-include edpm/ *.py
