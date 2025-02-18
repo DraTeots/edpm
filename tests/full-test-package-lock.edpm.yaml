@@ -1,0 +1,8 @@
+file_version: 1
+top_dir: /mnt/e/data/edpm
+dependencies:
+  root:
+    install_path: ''
+    built_with_config:
+      app_path: /mnt/e/data/edpm/root
+      name: root

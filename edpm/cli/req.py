@@ -1,7 +1,7 @@
 
 import click
 
-from edpm.engine.api import pass_edpm_context, EdpmApi
+from edpm.engine.api import EdpmApi
 from edpm.engine.output import markup_print as mprint
 
 # @click.group(invoke_without_command=True)
@@ -12,9 +12,8 @@ from edpm.engine.output import markup_print as mprint
 @click.option('--required', 'print_mode', flag_value='required', help="Print required packages")
 @click.option('--all', 'print_mode', flag_value='all', help="Print all packages (ready for packet manager install)")
 @click.option('--all-titles', 'print_mode', flag_value='all_titles', help="Print all packages (human readable)", default=True)
-@pass_edpm_context
 @click.pass_context
-def req(ctx, ectx, os_name, args, print_mode):
+def req(ctx, os_name, args, print_mode):
     """req - Shows required packages that can be installed by operating system.
 
     \b
@@ -39,7 +38,7 @@ def req(ctx, ectx, os_name, args, print_mode):
         "mint": "ubuntu22",
         "debian": "ubuntu18"
     }
-
+    ectx = ctx.obj
     assert isinstance(ectx, EdpmApi)
 
     # We need DB ready for this cli command

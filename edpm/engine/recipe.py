@@ -96,15 +96,19 @@ class Recipe:
         src = self.config.get("source_path", "")
         return os.path.isdir(src) and os.listdir(src)
 
+    @property
     def app_path(self) -> str:
         return self.config.get("app_path", "")
 
+    @property
     def source_path(self) -> str:
         return self.config.get("source_path", "")
 
+    @property
     def build_path(self) -> str:
         return self.config.get("build_path", "")
 
+    @property
     def install_path(self) -> str:
         return self.config.get("install_path", "")
 

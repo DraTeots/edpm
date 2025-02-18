@@ -7,7 +7,6 @@ http://fastjet.fr
 import os
 import sysconfig
 
-from edpm import PacketStateDatabase
 from edpm.engine.db import INSTALL_PATH
 from edpm.engine.env_gen import Set, Prepend
 from edpm.engine.recipe import Recipe

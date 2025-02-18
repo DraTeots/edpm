@@ -1,11 +1,10 @@
 import click
 
-from edpm.engine.api import pass_edpm_context, EdpmApi, ENV_SH_PATH, ENV_CSH_PATH
+from edpm.engine.api import EdpmApi, ENV_SH_PATH, ENV_CSH_PATH
 
 
 @click.command()
 @click.argument('shell_name', nargs=1, default='bash')
-@pass_edpm_context
 @click.pass_context
 def env(ctx, ectx, shell_name):
     """env - prints environment to run installed packages
@@ -39,8 +38,8 @@ So there are 3 ways of managing environment variables
       If you change 'db.json' by yourself, edpm doesn't track it automatically, so call 'edpm env'
       to regenerate these 2 files
     """
-
-    assert isinstance(ectx, EdpmApi)
+    api = ctx.obj
+    assert isinstance(api, EdpmApi)
 
     # check if DB file already exists
     if not ectx.db.exists():

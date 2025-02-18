@@ -1,117 +1,187 @@
+# cli/config.py
+
 import click
-from edpm.engine.api import pass_edpm_context, EdpmApi
-from edpm.engine.recipe import Recipe
+from edpm.engine.api import EdpmApi
 from edpm.engine.output import markup_print as mprint
 
 
 @click.command()
 @click.argument('name_values', nargs=-1)
-@pass_edpm_context
-def config(ectx, name_values):
-    """Sets build config for a packet
+@click.pass_context
+def config(ctx, name_values):
+    """
+    Sets or shows build config for dependencies or global config.
 
-    If packet name is put, config goes into that packet. If no packet name is provided,
-    config goes into global_config which affects all packet installations.
+    Usage patterns:
+      1) No arguments => show global config
+      2) One argument  => show config for 'global' or that dependency
+      3) Multiple arguments => set config
 
-    Example:
-        build_threads=4 jana branch=greenfield
+    Example to set global build_threads and set 'jana' branch:
+      edpm config build_threads=4 jana branch=greenfield
 
-    Explanation: global parameter 'build_threads' is set to 4, and 'jana' parameter  branch is set to 'greenfield'
-
-    The example above is an extreme use case of this command and it is advised to split the contexts:
-    >> edpm config build_threads=4
-    >> edpm config jana branch=greenfield
+    Explanation:
+      - 'build_threads=4' goes into global config
+      - 'jana' becomes a new context
+      - 'branch=greenfield' is set in the 'jana' dependency config
     """
 
-    assert isinstance(ectx, EdpmApi)
+    # Ensure manifest is loaded
+    ectx = ctx.obj
+    if not ectx.manifest:
+        ectx.load_manifest_and_lock("package.edpm.yaml", "package-lock.edpm.yaml")
 
-    # We need DB ready for this cli command
-    ectx.load_db_if_exists()
-
-    # We need at least some base configuration of recipes
-    ectx.configure_recipes()
-
-    if len(name_values) > 1:
-        _set_configs(ectx, name_values)
-    elif len(name_values) == 1:
-        _show_configs(ectx, name_values[0])
-    else:
+    if len(name_values) == 0:
+        # Show global config
         _show_configs(ectx, 'global')
-
-
-def _show_configs(ectx, name):
-    # get existing config
-    if name == 'global':
-        build_config = ectx.db.get_global_config()
+    elif len(name_values) == 1:
+        # Could be 'global' or a dependency name
+        maybe_name = name_values[0]
+        _show_configs(ectx, maybe_name)
     else:
-        ectx.ensure_installer_known(name)
-        build_config = ectx.db.get_config(name)
+        # parse them as set-commands
+        _set_configs(ectx, name_values)
 
-    mprint('<b><magenta>{}</magenta></b>:'.format(name))                      # pretty printing
-    for param_name, value in build_config.items():
-        mprint(' <b><blue>{}</blue></b>: {}'.format(param_name, value))
 
-    # There is nothing more than 'global'
+def _show_configs(ectx: EdpmApi, name: str):
+    """
+    Show configuration for either 'global' or a specific dependency.
+    """
     if name == 'global':
+        mprint("<b><magenta>global</magenta></b>:")
+        for k, v in ectx.manifest.global_config.items():
+            mprint(" <b><blue>{}</blue></b>: {}", k, v)
         return
 
-    mprint('<b><magenta>Default configs for {}</magenta></b>:'.format(name))  # pretty printing
-    recipe = ectx.pm.recipes_by_name[name]
-    assert isinstance(recipe, Recipe)
+    # Otherwise, it’s a dependency name
+    dep = ectx.manifest.find_dependency(name)
+    if not dep:
+        mprint("<red>Error:</red> No dependency named '{}' in the manifest.\n"
+               "Create one with:\n  edpm config {} recipe=<recipe_name>\n", name, name)
+        return
 
-    for param_name, value in recipe.config.items():
-        mprint(' <b><blue>{}</blue></b>: {}'.format(param_name, value))
+    # Print user-set config from the manifest
+    mprint("<b><magenta>{}</magenta></b>:", name)
+    dep_dict = dep.to_dict()  # Fields like recipe, branch, cmake_flags, etc.
+    for k, v in dep_dict.items():
+        if k in ["name", "recipe"]:
+            continue
+        mprint(" <b><blue>{}</blue></b>: {}", k, v)
+
+    mprint("\n<b><magenta>Recipe</magenta></b>: {}", dep.recipe)
 
 
-def _set_configs(ectx, name_values):
-    # Check that the packet name is from known packets
+def _set_configs(ectx: EdpmApi, name_values):
+    """
+    Parse multiple tokens of the form:
+       global build_threads=4
+       root branch=greenfield ...
+    Then update the manifest accordingly.
+    """
+    # parse them into { context_name -> {param: value, ...} }
     config_blob = _process_name_values(name_values)
 
-    for context_name in config_blob.keys():
-        mprint('<b><magenta>{}</magenta></b>:'.format(context_name))  # pretty printing
-
-        # get existing config
+    # For each context, update either 'manifest.global_config' or a dependency
+    for context_name, kvpairs in config_blob.items():
         if context_name == 'global':
-            existing_config = ectx.db.get_global_config()
+            _update_global_config(ectx, kvpairs)
         else:
-            ectx.ensure_installer_known(context_name)
-            existing_config = ectx.db.get_config(context_name)
+            _update_dep_config(ectx, context_name, kvpairs)
 
-        updating_config = config_blob[context_name]
+    # Save the manifest so changes persist
+    ectx.manifest.save("package.edpm.yaml")
 
-        existing_config.update(updating_config)  # update config
-        ectx.db.save()  # save config
 
-        # pretty printing the updated config
-        for name, value in existing_config.items():
-            mprint(' <b><blue>{}</blue></b>: {}'.format(name, value))
+def _update_global_config(ectx: EdpmApi, kvpairs: dict):
+    """
+    Merge fields into ectx.manifest.global_config
+    """
+    mprint("<b><magenta>global</magenta></b>:")
+    for k, v in kvpairs.items():
+        ectx.manifest.global_config[k] = v
+
+    # show final
+    for k, v in ectx.manifest.global_config.items():
+        mprint(" <b><blue>{}</blue></b>: {}", k, v)
+
+
+def _update_dep_config(ectx: EdpmApi, dep_name: str, kvpairs: dict):
+    """
+    1) If the dependency doesn't exist:
+       - If 'recipe' is in kvpairs, create a new dependency with that recipe.
+       - Otherwise, error out.
+    2) Merge param=val into that dependency's fields (branch, cmake_flags, etc.).
+    3) Show final result.
+    """
+    dep = ectx.manifest.find_dependency(dep_name)
+    if not dep:
+        # Possibly the user is creating a brand-new dependency
+        recipe = kvpairs.get("recipe", None)
+        if not recipe:
+            mprint("<red>Error:</red> No dependency named '{}' in the manifest, and no 'recipe=...' provided.\n"
+                   "Please do:\n  edpm config {} recipe=<recipe_name>\n", dep_name, dep_name)
+            return
+        # Create new dependency
+        ectx.manifest.add_dependency(name=dep_name, recipe=recipe)
+
+        # Now that it’s created, retrieve it
+        dep = ectx.manifest.find_dependency(dep_name)
+
+    # Now dep exists, merge fields
+    # e.g. if kvpairs has branch=..., we do dep.branch = ...
+    # or if kvpairs has cxx_standard=..., we do dep.cxx_standard=...
+    # Implementation depends on your DependencyEntry structure
+    # We'll just set them in dep._raw_data or so. For demonstration:
+    for k, v in kvpairs.items():
+        if k == "recipe":
+            dep.recipe = v
+        elif hasattr(dep, k):
+            setattr(dep, k, v)
+        else:
+            # Maybe put it in the underlying dict if you have a generic approach
+            dep._raw_data[k] = v
+
+    # Show final
+    mprint("<b><magenta>{}</magenta></b>:", dep_name)
+    final_dict = dep.to_dict()
+    for k, v in final_dict.items():
+        if k in ["name"]:
+            continue
+        mprint(" <b><blue>{}</blue></b>: {}", k, v)
 
 
 def _process_name_values(name_values):
-    """Converts input parameters to a config map
-
-    >>> _process_name_values(['build_threads=4', 'jana', 'branch=greenfield',  'build_threads=1'])
-    {'global': {'build_threads': '4'}, 'jana': {'branch': 'greenfield', 'build_threads': '1'}}
-
     """
+    Converts input parameters to a config map of the form:
+      {
+        context_name: {param_name: param_value, ...},
+        ...
+      }
 
+    If we see a token with '=', we treat it as param=value for the current context.
+    If we see a token WITHOUT '=', it is a new context name.
+
+    Example:
+      _process_name_values(["build_threads=4", "jana", "branch=greenfield", "build_threads=1"])
+      => {"global": {"build_threads": "4"}, "jana": {"branch": "greenfield", "build_threads": "1"}}
+    """
     context = 'global'
     result = {context: {}}
 
-    for name_value in name_values:
-        if '=' in name_value:
-            name, value = tuple(name_value.split('=', 1))  # 1 as we want to split only the first occurrence
-            result[context][name] = value
+    for nv in name_values:
+        if '=' in nv:
+            param, val = nv.split('=', 1)
+            result[context][param] = val
         else:
-            context = name_value
-            keys = list(result)
-            if context not in keys:
+            # Switch context
+            context = nv
+            if context not in result:
                 result[context] = {}
 
-    # remove empty records:
-    keys = list(result)   # to avoid RuntimeError: dictionary changed size during iteration
-    for key in keys:
-        if not result[key]:
-            del result[key]
+    # Remove empty records if any
+    empty_keys = [k for k, v in result.items() if not v]
+    for ek in empty_keys:
+        if ek != 'global':  # Usually we keep 'global' even if empty
+            del result[ek]
 
     return result

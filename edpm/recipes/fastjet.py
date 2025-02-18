@@ -7,7 +7,7 @@ http://fastjet.fr
 import os
 import sysconfig
 
-from edpm import PacketStateDatabase
+
 from edpm.engine.db import INSTALL_PATH
 from edpm.engine.env_gen import Set, Prepend
 from edpm.engine.recipe import Recipe
@@ -49,8 +49,6 @@ class FastJet(Recipe):
 
     def setup(self, db):
         """Sets all variables like source dirs, build dirs, etc"""
-        if db:
-            assert isinstance(db, PacketStateDatabase)
 
         #
         # use_common_dirs_scheme() sets standard package variables:

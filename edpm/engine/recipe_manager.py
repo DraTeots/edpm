@@ -66,9 +66,19 @@ class RecipeManager(object):
         classes = [cls for cls in Recipe.__subclasses__() + GitCmakeRecipe.__subclasses__() if cls != GitCmakeRecipe]
 
         for cls in classes:
-            if cls == GitCmakeRecipe:
+            # Try instantiating; if it's abstract or missing required args, skip
+            try:
+                installer = cls()
+            except TypeError:
+                # e.g. abstract class cannot be instantiated
                 continue
-            installer = cls()
+            except Exception:
+                # If any other init error occurs, also skip or handle differently
+                continue
+
+            # If the instance has no 'name' or it's empty, skip it
+            if not getattr(installer, 'name', None):
+                continue
 
             # Add installer 'by name'
             self.recipes_by_name[installer.name] = installer

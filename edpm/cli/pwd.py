@@ -2,7 +2,7 @@ import os
 
 import click
 
-from edpm.engine.api import pass_edpm_context, EdpmApi
+from edpm.engine.api import EdpmApi
 from edpm.engine.db import INSTALL_PATH, IS_OWNED, SOURCE_PATH, BUILD_PATH
 from edpm.engine.output import markup_print as mprint
 
@@ -14,11 +14,8 @@ from edpm.engine.output import markup_print as mprint
 @click.option('--build', 'print_mode', flag_value='build', help="Print build directory")
 @click.option('--source', 'print_mode', flag_value='source', help="Print source directory")
 @click.option('--all', 'print_mode', default=True, flag_value='all', help="Print all information on the package")
-
-
-@pass_edpm_context
 @click.pass_context
-def pwd(ctx, ectx, packet_names, print_mode):
+def pwd(ctx, packet_names, print_mode):
     """Shows a directory related to the active packet
 
     Remark:
@@ -31,6 +28,7 @@ def pwd(ctx, ectx, packet_names, print_mode):
 
     """
     from edpm.engine.db import INSTALL_PATH, IS_OWNED, SOURCE_PATH, BUILD_PATH
+    ectx = ctx.obj
     assert isinstance(ectx, EdpmApi)
 
     # We need DB ready for this cli command

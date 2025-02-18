@@ -107,11 +107,9 @@ class RootRecipe(Recipe):
                          "&& cmake --build . --target install" \
             .format(**self.config)  # make global options like '-j8'. Skip now
 
-    def step_install(self):
-        self.step_clone_root()
-        self.step_build_root()
 
-    def step_clone_root(self):
+
+    def fetch(self):
         """Clones root from github mirror"""
 
         # Check the directory exists and not empty
@@ -121,7 +119,7 @@ class RootRecipe(Recipe):
         mkpath(self.source_path)  # Create the directory and any missing ancestor directories if not there
         run(self.clone_command)  # Execute git clone command
 
-    def step_build_root(self):
+    def build(self):
         """Builds root from the ground"""
 
         # Create build directory
@@ -143,7 +141,7 @@ class RootRecipe(Recipe):
         run('rm -rf {}'.format(self.build_path))
 
         # Now run build root
-        self.step_build_root()
+        self.build()
 
     @staticmethod
     def gen_env(data):

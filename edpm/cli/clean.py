@@ -1,6 +1,6 @@
 import click
 
-from edpm.engine.api import pass_edpm_context, EdpmApi
+from edpm.engine.api import EdpmApi
 from edpm.engine.commands import run
 from edpm.engine.output import markup_print as mprint
 
@@ -14,11 +14,8 @@ _help_option_auto = "Removes from DB and disk if(!) the packet is owned by edpm"
 @click.command()
 @click.argument('packet_name', nargs=1, metavar='<packet-name>')
 @click.argument('install_paths', nargs=-1, metavar='<path>')
-
-
-@pass_edpm_context
 @click.pass_context
-def clean(ctx, ectx, packet_name, install_paths):
+def clean(ctx, packet_name, install_paths):
     """Removes a packet.
     By default deletes record from edpm DB and the disk folders if the packet is 'owned' by edpm.
 
@@ -28,6 +25,7 @@ def clean(ctx, ectx, packet_name, install_paths):
 
     """
     from edpm.engine.db import INSTALL_PATH, IS_OWNED, SOURCE_PATH, BUILD_PATH
+    ectx = ctx.obj
     assert isinstance(ectx, EdpmApi)
 
     # We need DB ready for this cli command

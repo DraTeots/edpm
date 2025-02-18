@@ -22,125 +22,136 @@ global:
   #      All dependencies will source these instructions in the final environment scripts.
   environment:
     # We can mix multiple environment actions
-    - set:
-        GLOBAL_VAR: "some_global_value"
+  - set:
+      GLOBAL_VAR: some_global_value
 
-    - prepend:
-        PATH: "/usr/local/global/bin"
+  - prepend:
+      PATH: /usr/local/global/bin
 
     # You can have as many environment instructions as you want
-    - append:
-        PYTHONPATH: "/usr/local/global/python"
+  - append:
+      PYTHONPATH: /usr/local/global/python
 
+  config: {}
 dependencies:
   ############################################################
   # 1) A "manual" / pre-installed dependency
   #    - Used to register an already installed package as a dependency
   ############################################################
-  - recipe: manual
-    name: local_root           # A custom name (unique ID in the lock file)
-    location: "/opt/myroot"    # Where the user installed it
+- recipe: manual
+  name: local_root             # A custom name (unique ID in the lock file)
+  location: /opt/myroot        # Where the user installed it
     # This environment block is merged with the global environment
     # when generating shell scripts or setting environment in-process.
-    environment:
-      - set:
-          ROOTSYS: "$location"   # We can reference $location, meaning "/opt/myroot"
-      - prepend:
-          PATH: "$location/bin"
-      - prepend:
-          LD_LIBRARY_PATH: "$location/lib"
+  environment:
+  - set:
+      ROOTSYS: $location         # We can reference $location, meaning "/opt/myroot"
+  - prepend:
+      PATH: $location/bin
+  - prepend:
+      LD_LIBRARY_PATH: $location/lib
 
     # Example external requirements (like if this package also needs some OS-level packages).
     # The user can run `edpm req apt` or `edpm req pip` to see these.
-    external-requirements:
-      apt:
-        - libx11-dev
-        - libssl-dev
-      pip:
-        - numpy>=1.21
-        - pyyaml
+  external-requirements:
+    apt:
+    - libx11-dev
+    - libssl-dev
+    pip:
+    - numpy>=1.21
+    - pyyaml
 
   ############################################################
   # 2) A GitHub + CMake-based dependency
   #    - The recipe 'github-cmake-cpp' might handle cloning & building.
   ############################################################
-  - recipe: github-cmake-cpp
-    name: MyLib
-    repo_address: "https://github.com/example/mylib.git"
-    branch: "main"
-    cmake_flags: "-DENABLE_FOO=ON -DCMAKE_POSITION_INDEPENDENT_CODE=ON"
-    environment:
+  config: {}
+- recipe: github-cmake-cpp
+  name: MyLib
+  repo_address: https://github.com/example/mylib.git
+  branch: main
+  cmake_flags: -DENABLE_FOO=ON -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+  environment:
       # environment blocks can have multiple instructions, each with one action
-      - prepend:
-          PATH: "$install_dir/bin"
-      - prepend:
-          LD_LIBRARY_PATH: "$install_dir/lib"
-      - set:
-          MYLIB_HOME: "$install_dir"
+  - prepend:
+      PATH: $install_dir/bin
+  - prepend:
+      LD_LIBRARY_PATH: $install_dir/lib
+  - set:
+      MYLIB_HOME: $install_dir
 
     # Additional external requirements. We’re not enumerating all possible keys,
     # just apt/pip as an example:
-    external-requirements:
-      apt:
-        - libmylib-dev
-      pip:
-        - mylib_python_bindings==2.0
+  external-requirements:
+    apt:
+    - libmylib-dev
+    pip:
+    - mylib_python_bindings==2.0
 
   ############################################################
   # 3) Another GitHub + CMake dependency, showing multiple environment instructions
   ############################################################
-  - recipe: github-cmake-cpp
-    name: ExtraLib
-    repo_address: "https://github.com/example/extra_lib.git"
-    branch: "develop"
+  config: {}
+- recipe: github-cmake-cpp
+  name: ExtraLib
+  repo_address: https://github.com/example/extra_lib.git
+  branch: develop
     # We do not override cmake_flags or environment here,
     # so it inherits whatever the recipe or global config provides by default.
-    environment:
+  environment:
       # demonstrating multiple 'prepend' instructions
-      - prepend:
-          PATH: "$install_dir/utils/bin"
-      - prepend:
-          PATH: "$install_dir/example/bin"
-      - append:
-          LD_LIBRARY_PATH: "$install_dir/addons/lib"
+  - prepend:
+      PATH: $install_dir/utils/bin
+  - prepend:
+      PATH: $install_dir/example/bin
+  - append:
+      LD_LIBRARY_PATH: $install_dir/addons/lib
 
-    external-requirements:
-      apt:
-        - libextra-dev
-      conan:
-        - zlib/1.2.13
-        - catch2/3.1.0
+  external-requirements:
+    apt:
+    - libextra-dev
+    conan:
+    - zlib/1.2.13
+    - catch2/3.1.0
 
   ############################################################
   # 4) Registering “system” requirements without building code
   #    - Another approach for referencing an installed dependency
   #      or a large system library. It’s just like “manual.”
   ############################################################
-  - recipe: manual
-    name: system_eigen
-    location: "/usr/include/eigen3"
+  config: {}
+- recipe: manual
+  name: system_eigen
+  location: /usr/include/eigen3
     # Typically no bin or lib, but we still can specify environment if needed:
-    environment:
-      - set:
-          EIGEN_HOME: "$location"
+  environment:
+  - set:
+      EIGEN_HOME: $location
 
-    external-requirements:
+  external-requirements:
       # For demonstration, we might declare a dnf or apt requirement
-      apt:
-        - libeigen3-dev
+    apt:
+    - libeigen3-dev
 
   ############################################################
   # 5) Something hypothetical like a Python “pip-install” recipe
   ############################################################
-  - recipe: pip-install
-    name: my_python_tool
-    package_name: "somepythonlib"
-    version: "1.2.3"
+  config: {}
+- recipe: pip-install
+  name: my_python_tool
+  package_name: somepythonlib
+  version: 1.2.3
     # environment often not needed for pip packages, but let's do an example
-    environment:
-      - append:
-          PYTHONPATH: "$install_dir/site-packages"
-    external-requirements:
+  environment:
+  - append:
+      PYTHONPATH: $install_dir/site-packages
+  external-requirements:
       # Possibly if this pip tool also needs system-level libs
-      apt: [ libsome-dev ]
-      pip: [ requests, "Click>=8.0" ]
+    apt: [libsome-dev]
+    pip: [requests, Click>=8.0]
+  config: {}
+- recipe: root
+  name: root
+  config: {}
+  environment: []
+  external-requirements: {}

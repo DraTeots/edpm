@@ -1,59 +1,48 @@
-# Info - prints extended information of the edpm state
+# cli/info.py
 
 import click
-
-from edpm.engine.api import pass_edpm_context, EdpmApi, print_packets_info
-from edpm.engine.db import INSTALL_PATH
 from edpm.engine.output import markup_print as mprint
-
-
-_cmake_opt_help = "List packages in terms of CMake flags"
-_flag_help_db = "Prints information about edpm DB"
-_flag_help_db_path = "Prints edpm json DB path"
-
-
-def _no_flags_set(flag_cmake, flag_db, flag_db_path):
-    return flag_cmake and flag_db and flag_db_path
-
+from edpm.engine.api import EdpmApi
 
 @click.command()
-@click.option('--cmake', 'flag_cmake', flag_value='cmake', help=_cmake_opt_help)
-@click.option('--db', 'flag_db', flag_value='cmake', help=_cmake_opt_help)
-@click.option('--db-path', 'flag_db_path', flag_value='cmake', help=_cmake_opt_help)
-@pass_edpm_context
+@click.option('--cmake', 'flag_cmake', is_flag=True, default=False, help="Show info in terms of CMake flags (example).")
 @click.pass_context
-def info(ctx, ectx, flag_cmake, flag_db, flag_db_path):
-    """info - Description
-
-    \b
-    Example:
-      info --cmake
-      info --db-path
+def info(ctx, flag_cmake):
     """
+    Prints information about the EDPM state.
+    e.g. which packages are installed, top_dir, etc.
+    """
+    # Ensure manifest & lock are loaded
+    ectx = ctx.obj
+    if not ectx.manifest or not ectx.lock.file_path:
+        ectx.load_manifest_and_lock("package.edpm.yaml", "package-lock.edpm.yaml")
 
-    if _no_flags_set(flag_cmake, flag_db, flag_db_path):
-        flag_db = True
+    # Print top_dir
+    top_dir = ectx.get_top_dir()
+    mprint("Top dir: {}", top_dir)
 
-    assert isinstance(ectx, EdpmApi)
+    # Show installed packages
+    installed = []
+    for dep_name in ectx.lock.get_all_dependencies():
+        if ectx.lock.is_installed(dep_name):
+            dep_data = ectx.lock.get_dependency(dep_name)
+            ipath = dep_data.get("install_path")
+            installed.append((dep_name, ipath))
 
-    # We need DB ready for this cli command
-    ectx.ensure_db_exists()
+    if installed:
+        mprint("\n<magenta>Installed packages:</magenta>")
+        for dep_name, ipath in installed:
+            mprint("  <blue>{}</blue> at {}", dep_name, ipath)
+    else:
+        mprint("\nNo installed packages found in the lock file.")
 
     if flag_cmake:
-        _print_cmake(ectx)
-
-
-def _print_cmake(ectx):
-    db = ectx.db
-    pm = ectx.pm
-
-    flag_names_by_packet_names = pm.recipes_by_name["eicrecon"].cmake_deps_flag_names
-
-    flags = ['-D{}="{}"'.format(flag_names_by_packet_names[name], install_info[INSTALL_PATH])
-             for name, install_info in zip(db.packet_names, map(db.get_active_install, db.packet_names))
-             if name in flag_names_by_packet_names.keys() and install_info]
-
-    # Fancy print of installed packets
-    print(" ".join(flags))
-
-
+        # Example usage: generate some -D flags
+        # This is an ad-hoc example, as you had in old code
+        # In new code, you'd decide how to interpret the installed paths.
+        cmake_flags = []
+        for dep_name, ipath in installed:
+            # Suppose you map each dep_name to a cmake variable, e.g. MYLIB_PATH
+            var_name = f"{dep_name.upper()}_DIR"  # or a real mapping
+            cmake_flags.append(f'-D{var_name}="{ipath}"')
+        mprint("\nCMake style flags:\n{}", " ".join(cmake_flags))

@@ -1,16 +1,14 @@
 import click
 
-from edpm.engine.api import pass_edpm_context
 from edpm.engine.db import PacketStateDatabase
 
 
 @click.group(invoke_without_command=True)
-@pass_edpm_context
 @click.pass_context
 def find(ctx, ectx):
     assert (isinstance(ectx.db, PacketStateDatabase))
 
-    db = ectx.db
+    db = ctx.obj.db
 
     click.echo("installed packets:")
 

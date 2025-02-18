@@ -1,249 +1,197 @@
-"""
-manifest.py
-
-This module provides classes and functions for handling the EDPM YAML manifest:
-  - edpm.dependencies.yaml
-
-It includes:
-  - Loading the YAML data
-  - Parsing global config and global environment
-  - Parsing dependencies (including environment and external requirements)
-  - Utility methods to gather external requirements by package manager key
-
-All environment-manipulation code (Set, Prepend, Append, etc.) is also included
-here to avoid scattering the logic across multiple files.
-"""
+# manifest.py
 
 import os
-import yaml
 from typing import Any, Dict, List, Optional
+
+# Instead of PyYAML, use ruamel.yaml
+from ruamel.yaml import YAML
+from ruamel.yaml.comments import CommentedMap, CommentedSeq
 
 from edpm.engine.env_gen import EnvironmentManipulation, Append, Prepend, Set
 
-
-############################
-# Manifest Classes
-############################
+yaml_rt = YAML(typ='rt')  # rt = round-trip mode
 
 def expand_placeholders(text: str, placeholders: Dict[str, str]) -> str:
-    """
-    Expands placeholders like $install_dir or $location in a string.
-    If text = "$install_dir/bin" and placeholders["install_dir"] = "/opt/foo",
-    then the result is "/opt/foo/bin".
-    """
     if not text:
         return text
-
     for k, v in placeholders.items():
         text = text.replace(f'${k}', v)
     return text
 
+class EnvironmentBlock:
+    def __init__(self, data: List[Any]):
+        # In ruamel.yaml, data might be a CommentedSeq or plain list
+        self.data = data or []
 
-def parse_environment_block(
-        env_block: List[Any],
-        placeholders: Optional[Dict[str, str]] = None
-) -> List[EnvironmentManipulation]:
-    """
-    Converts a YAML environment list into a list of EnvironmentManipulation objects.
-
-    Example env_block:
-      [
-        { prepend: { PATH: "$install_dir/bin", LD_LIBRARY_PATH: "$install_dir/lib" }},
-        { set: { MY_VAR: "some_value" }},
-        { append: { PYTHONPATH: "/custom/python" }}
-      ]
-
-    placeholders can be something like:
-      { "install_dir": "/opt/app", "location": "/opt/manual" }
-
-    Returns a list of Set/Prepend/Append objects.
-    """
-    if placeholders is None:
-        placeholders = {}
-
-    result = []
-
-    for item in env_block:
-        # Each item is expected to be a dict with exactly one key: set, prepend, or append
-        if not isinstance(item, dict):
-            continue
-
-        for action_key, data_dict in item.items():
-            # data_dict is, e.g., { PATH: "$install_dir/bin", LD_LIBRARY_PATH: "$install_dir/lib" }
-            if not isinstance(data_dict, dict):
+    def parse(self, placeholders: Optional[Dict[str, str]] = None) -> List[EnvironmentManipulation]:
+        if placeholders is None:
+            placeholders = {}
+        result = []
+        for item in self.data:
+            if not isinstance(item, dict):
                 continue
+            for action_key, kv_dict in item.items():
+                if not isinstance(kv_dict, dict):
+                    continue
+                for var_name, raw_val in kv_dict.items():
+                    expanded = expand_placeholders(str(raw_val), placeholders)
+                    if action_key == "set":
+                        result.append(Set(var_name, expanded))
+                    elif action_key == "prepend":
+                        result.append(Prepend(var_name, expanded))
+                    elif action_key == "append":
+                        result.append(Append(var_name, expanded))
+                    else:
+                        pass
+        return result
 
-            # For each VAR => VALUE in data_dict, create the right environment object
-            for var_name, raw_value in data_dict.items():
-                expanded_value = expand_placeholders(str(raw_value), placeholders)
-
-                if action_key == "set":
-                    result.append(Set(var_name, expanded_value))
-                elif action_key == "prepend":
-                    result.append(Prepend(var_name, expanded_value))
-                elif action_key == "append":
-                    result.append(Append(var_name, expanded_value))
-                else:
-                    # Unrecognized action, skip or raise an error
-                    pass
-
-    return result
-
-
-class DependencyEntry:
-    """
-    Represents a single item in the 'dependencies' list.
-    It aggregates:
-      - recipe name
-      - user-specified overrides (e.g., repo_address, branch, location, etc.)
-      - environment instructions
-      - external-requirements
-    """
-
+class ConfigBlock:
     def __init__(self, data: Dict[str, Any]):
-        """
-        data is the raw dict from the YAML describing this dependency.
-        """
-        # Required fields
-        self.recipe: str = data.get("recipe", "")
-        if not self.recipe:
-            raise ValueError("Each dependency dictionary must have 'recipe' key.")
+        self.data = data
 
-        # If the user provided a specific name, use it; otherwise fall back to 'recipe'
-        self.name: str = data.get("name", self.recipe)
+    def __getitem__(self, key: str) -> Any:
+        return self.data.get(key)
 
-        # Common fields that might appear in many recipes:
-        self.location: str = data.get("location", "")
-        self.repo_address: str = data.get("repo_address", "")
-        self.branch: str = data.get("branch", "")
-        self.cmake_flags: str = data.get("cmake_flags", "")
-        self.build_threads: Any = data.get("build_threads", None)  # might be an int or str
-        self.cxx_standard: Any = data.get("cxx_standard", None)
+    def __setitem__(self, key: str, value: Any):
+        self.data[key] = value
 
-        # Additional user-specified fields for specialized recipes (pip-install, etc.)
-        # We'll just store them in a generic dictionary for retrieval:
-        self._raw_data = data
+    def update(self, other: Dict[str, Any]):
+        self.data.update(other)
 
-        # Environment block
-        self.environment_data = data.get("environment", [])
+    def get(self, key: str, default=None):
+        return self.data.get(key, default)
 
-        # External requirements
-        self.external_requirements = data.get("external-requirements", {})
-        # e.g. { 'apt': ['libx11-dev', 'libssl-dev'], 'pip': ['numpy>=1.21', 'pyyaml'] }
+    def keys(self):
+        return self.data.keys()
 
-    def get_env_actions(
-            self,
-            placeholders: Optional[Dict[str, str]] = None
-    ) -> List[EnvironmentManipulation]:
-        """
-        Parse this dependency's environment block into environment manipulation objects.
-        placeholders typically includes { 'install_dir': '...', 'location': '...' }.
-        """
-        return parse_environment_block(self.environment_data, placeholders or {})
+    def __contains__(self, key):
+        return key in self.data
 
-    def get_externals_for(self, manager_key: str) -> List[str]:
-        """
-        Returns the list of requirements for a given manager, e.g. 'apt', 'dnf', 'pip'.
-        """
-        if manager_key not in self.external_requirements:
-            return []
-        reqs = self.external_requirements[manager_key]
-        # Typically a list of strings
-        return reqs if isinstance(reqs, list) else []
+class Dependency:
+    def __init__(self, data: Dict[str, Any]):
+        self.data = data
+        if "recipe" not in self.data:
+            raise ValueError("Dependency must have a 'recipe' field.")
+        if "environment" not in self.data:
+            self.data["environment"] = []
+        if "config" not in self.data:
+            self.data["config"] = {}
+        if "external-requirements" not in self.data:
+            self.data["external-requirements"] = {}
 
-    def get_all_externals(self) -> Dict[str, List[str]]:
-        """
-        Returns the entire external-requirements dictionary
-        (manager -> list of packages).
-        """
-        return self.external_requirements
+    @property
+    def name(self) -> str:
+        return self.data.get("name", self.data["recipe"])
 
-    def get_raw_field(self, key: str, default=None):
-        """
-        Access any arbitrary user field from the YAML, e.g. 'package_name' or 'version'
-        for pip-install.
-        """
-        return self._raw_data.get(key, default)
+    @property
+    def recipe(self) -> str:
+        return self.data["recipe"]
 
+    @property
+    def config_block(self) -> ConfigBlock:
+        return ConfigBlock(self.data["config"])
+
+    @property
+    def env_block(self) -> EnvironmentBlock:
+        return EnvironmentBlock(self.data["environment"])
+
+    @property
+    def externals(self) -> Dict[str, List[str]]:
+        return self.data["external-requirements"]
+
+    def to_dict(self) -> Dict[str, Any]:
+        return self.data
 
 class EdpmManifest:
-    """
-    Represents the entire edpm.dependencies.yaml structure:
-      - global config
-      - array of dependency entries
-    """
-
     def __init__(self, data: Dict[str, Any]):
-        # Parse the top-level 'global' object
-        self.global_config: Dict[str, Any] = data.get("global", {})
-        # E.g. { cxx_standard: 17, build_threads: 8, environment: [...] }
-
-        # Pull out environment instructions from global
-        self._global_env_data = self.global_config.get("environment", [])
-
-        # cxx_standard and build_threads are typical fields
-        self.cxx_standard: Any = self.global_config.get("cxx_standard")
-        self.build_threads: Any = self.global_config.get("build_threads")
-
-        # Parse the 'dependencies' array
-        deps_data = data.get("dependencies", [])
-        self.dependencies: List[DependencyEntry] = []
-        for entry in deps_data:
-            if isinstance(entry, str):
-                # If the user wrote just "geant4" or something,
-                # we interpret it as { recipe: "geant4" }
-                entry = {"recipe": entry}
-            if not isinstance(entry, dict):
-                continue
-            dep = DependencyEntry(entry)
-            self.dependencies.append(dep)
+        self.data = data
+        if "global" not in self.data:
+            self.data["global"] = {}
+        if "dependencies" not in self.data:
+            self.data["dependencies"] = []
+        if "config" not in self.data["global"]:
+            self.data["global"]["config"] = {}
+        if "environment" not in self.data["global"]:
+            self.data["global"]["environment"] = []
 
     @classmethod
     def load(cls, filename: str) -> "EdpmManifest":
-        """
-        Loads the manifest from a YAML file and returns an EdpmManifest instance.
-        """
         if not os.path.isfile(filename):
             raise FileNotFoundError(f"Manifest file not found: {filename}")
-
         with open(filename, "r", encoding="utf-8") as f:
-            raw_data = yaml.safe_load(f) or {}
-
+            raw_data = yaml_rt.load(f)  # load with ruamel.yaml
+        if not raw_data:
+            raw_data = {}
         return cls(raw_data)
 
+    def save(self, filename: str):
+        """
+        Write self.data back to a YAML file, preserving comments and structure.
+        """
+        with open(filename, "w", encoding="utf-8") as f:
+            yaml_rt.dump(self.data, f)
+
+    @property
+    def global_config_block(self) -> ConfigBlock:
+        return ConfigBlock(self.data["global"]["config"])
+
+    @property
+    def global_env_block(self) -> EnvironmentBlock:
+        return EnvironmentBlock(self.data["global"]["environment"])
+
+    @property
+    def dependencies(self) -> List[Dependency]:
+        deps_list = self.data["dependencies"]
+        result = []
+        for item in deps_list:
+            if isinstance(item, str):
+                item = {"recipe": item, "environment": [], "config": {}}
+            result.append(Dependency(item))
+        return result
+
+    def has_dependency(self, name: str) -> bool:
+        return any(d.name == name for d in self.dependencies)
+
+    def find_dependency(self, name: str) -> Optional[Dependency]:
+        for d in self.dependencies:
+            if d.name == name:
+                return d
+        return None
+
+    def add_dependency(self, name: str, recipe: str, **kwargs):
+        new_dep = {
+            "recipe": recipe,
+            "name": name,
+            "config": {},
+            "environment": [],
+            "external-requirements": {}
+        }
+        for k, v in kwargs.items():
+            if k == "environment":
+                new_dep["environment"] = v
+            elif k == "config":
+                new_dep["config"] = v
+            else:
+                new_dep[k] = v
+        self.data["dependencies"].append(new_dep)
+
     def get_global_env_actions(self) -> List[EnvironmentManipulation]:
-        """
-        Parse the global environment instructions from 'global.environment'
-        into a list of environment manipulation objects.
-        """
-        # No placeholders at the "global" level typically,
-        # unless you define something like $some_global_dir.
-        return parse_environment_block(self._global_env_data, {})
+        return self.global_env_block.parse()
 
     def gather_requirements(self, manager_key: str) -> List[str]:
-        """
-        Collects all external requirements for a given manager key
-        (e.g. 'apt', 'pip', 'conda', 'dnf') across all dependencies.
-        """
-        all_pkgs = []
-        for dep in self.dependencies:
-            these_pkgs = dep.get_externals_for(manager_key)
-            all_pkgs.extend(these_pkgs)
-        return list(set(all_pkgs))  # unique
+        pkgs = []
+        for d in self.dependencies:
+            reqs = d.externals.get(manager_key, [])
+            pkgs.extend(reqs)
+        return list(set(pkgs))
 
     def gather_all_requirements(self) -> Dict[str, List[str]]:
-        """
-        Gathers the union of all external-requirements from all dependencies,
-        returning a dict: manager_key -> list of packages
-        """
-        result_map = {}
+        result = {}
         for dep in self.dependencies:
-            for manager, pkgs in dep.get_all_externals().items():
-                if manager not in result_map:
-                    result_map[manager] = []
-                result_map[manager].extend(pkgs)
-
-        # Deduplicate each list
-        for k in result_map:
-            result_map[k] = list(set(result_map[k]))
-        return result_map
+            for mgr_key, items in dep.externals.items():
+                if mgr_key not in result:
+                    result[mgr_key] = []
+                result[mgr_key].extend(items)
+        for mk in result:
+            result[mk] = list(set(result[mk]))
+        return result
