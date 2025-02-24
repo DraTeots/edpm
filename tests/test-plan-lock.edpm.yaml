@@ -1,0 +1,24 @@
+file_version: 1
+top_dir: /mnt/e/data/edpm
+dependencies:
+  eigen3:
+    install_path: /mnt/e/data/edpm/eigen3/eigen3-install
+    built_with_config:
+      env_file_bash: /mnt/e/dev/edpm/tests/env.sh
+      app_path: /mnt/e/data/edpm/eigen3
+      fetch: git
+      make: cmake
+      branch: 3.4.0
+      url: https://gitlab.com/libeigen/eigen.git
+      app_name: eigen3
+      cmake_build_type: RelWithDebInfo
+      fetch_path: /mnt/e/data/edpm/eigen3/src
+      source_path: /mnt/e/data/edpm/eigen3/src
+      build_path: /mnt/e/data/edpm/eigen3/build
+      install_path: /mnt/e/data/edpm/eigen3/eigen3-install
+      git_clone_depth: --depth 1
+      clone_command: git clone --depth 1 -b 3.4.0 https://gitlab.com/libeigen/eigen.git
+        /mnt/e/data/edpm/eigen3/src
+      build_cmd: cmake -DCMAKE_INSTALL_PREFIX=/mnt/e/data/edpm/eigen3/eigen3-install
+        -DCMAKE_CXX_STANDARD=17 -DCMAKE_BUILD_TYPE=RelWithDebInfo  /mnt/e/data/edpm/eigen3/src
+        && cmake --build . -- -j 4 && cmake --build . --target install

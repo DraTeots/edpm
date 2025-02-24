@@ -12,10 +12,10 @@ def info(ctx, flag_cmake):
     Prints information about the EDPM state.
     e.g. which packages are installed, top_dir, etc.
     """
-    # Ensure manifest & lock are loaded
+    # Ensure plan & lock are loaded
     ectx = ctx.obj
-    if not ectx.manifest or not ectx.lock.file_path:
-        ectx.load_manifest_and_lock("package.edpm.yaml", "package-lock.edpm.yaml")
+    if not ectx.plan or not ectx.lock.file_path:
+        ectx.load_manifest_and_lock("plan.edpm.yaml", "plan-lock.edpm.yaml")
 
     # Print top_dir
     top_dir = ectx.get_top_dir()

@@ -1,302 +1,28 @@
-# edpm_api.py
+# edpm/engine/api.py
 
 import os
-import click
-import io
+import sys
+from typing import List
 
-from typing import Dict, List
-from edpm.engine.manifest import EdpmManifest
-from .lockfile import LockfileConfig
-from edpm.engine.recipe_manager import RecipeManager
+from edpm.engine.lockfile import LockfileConfig
 from edpm.engine.output import markup_print as mprint
-from edpm.engine.env_gen import EnvironmentManipulation
-
-# optional: from edpm.engine.commands import run, workdir (if needed)
-
-ENV_SH_PATH = "env_sh_path"
-ENV_CSH_PATH = "env_csh_path"
+from edpm.engine.recipe_manager import RecipeManager
+from edpm.engine.planfile import PlanFile
 
 
-class EdpmApi:
+def print_packets_info(api: "EdpmApi"):
     """
-    This 'API' object replaces the old DB-based approach.
-    It loads a YAML manifest (e.g. package.edpm.yaml)
-    and a YAML lockfile (e.g. package-lock.edpm.yaml).
-
-    * manifest: what we WANT to install
-    * lockfile: what is currently INSTALLED + top_dir, etc.
-
-    The 'RecipeManager' is used to create + run the actual recipes.
+    Helper function to print installed vs. not-installed packages info.
     """
-
-    def __init__(self, manifest_file="package.edpm.yaml", lock_file="package-lock.edpm.yaml"):
-        self.manifest: EdpmManifest = None
-        self.lock: LockfileConfig = LockfileConfig()
-        self.pm = RecipeManager()
-
-        # Paths for environment scripts, if we generate them
-        self.env_sh_path = "envedpm.sh"
-        self.env_csh_path = "envedpm.csh"
-
-        # 1. Load the manifest
-        self.manifest_file = manifest_file
-        self.manifest_is_loaded = False
-        self.lock_file = lock_file
-        self.lock_is_loaded = False
-
-    def load_all(self):
-        # 2. Load the lock file
-        self.lock.load(self.lock_file)
-        self.lock_is_loaded = True
-        self.manifest = EdpmManifest.load(self.manifest_file)
-        self.pm.load_installers()
-
-
-    def ensure_lock_exists(self):
-        """
-        If the lock file path is not set or does not exist, create a new one on disk.
-        """
-        if not self.lock.file_path:
-            # Default location
-            self.lock.file_path = "package-lock.edpm.yaml"
-        if not os.path.isfile(self.lock.file_path):
-            mprint("<green>Creating new lock file at {}</green>", self.lock.file_path)
-            self.lock.save()
-
-    @property
-    def top_dir(self) -> str:
-        return self.lock.top_dir
-
-    @top_dir.setter
-    def top_dir(self, path: str):
-        """
-        The user can supply a top_dir (like --top-dir).
-        We store it in the lock file so the recipes know where to install.
-        """
-        real_path = os.path.abspath(path)
-        self.lock.top_dir  = real_path
-        self.lock.save()
-
-    def guess_recipe_for(self, pkg_name: str) -> str:
-        """
-        If 'pkg_name' matches a known recipe from the RecipeManager, return that.
-        Otherwise, guess a fallback or return None.
-        """
-        known = list(self.pm.recipes_by_name.keys())  # e.g. ["manual", "github-cmake-cpp", "root", "geant4", ...]
-        # If user typed "root" and we do have a "root" in registry, return "root"
-        if pkg_name in known:
-            return pkg_name
-        # Maybe special-case certain names that map to known recipes
-        # e.g., if pkg_name.lower() == "geant4" and "geant4" in known: return "geant4"
-
-        # Otherwise fallback to "manual" or "github-cmake-cpp", or None
-        # In real usage, you might prefer a "manual" approach or raise an error
-        # if you can't guess. For demonstration:
-        if "manual" in known:
-            return "manual"
-
-        return None  # meaning we can't guess, the user must specify
-
-
-
-    def install_dependency_chain(self, dep_names: List[str], mode="missing", explain=False, deps_only=False):
-        """
-        Installs each named dependency plus any sub-dependencies.
-        Mode can be 'missing', 'single', 'all' (like the old code).
-        If explain=True, we only print what would be installed, not actually build.
-        If deps_only=True, skip building the main package and only build its dependencies.
-        """
-        if not dep_names:
-            return
-
-        # We build a chain of dependencies from the manifest.
-        # (If you want advanced "transitive" dependencies, you'd do it here.
-        #  The new EDPM might rely on the order from the manifest, or a graph approach.)
-        # For simplicity, we just assume user gave the exact names in the correct order
-        # or you have some method to gather them.
-
-        # 1) For each named dep, see if it's installed. If missing => install
-        to_install = []
-        for dep_name in dep_names:
-            # If user wants 'single' mode, or if the lock says it's not installed, we add it
-            if mode == "all":
-                to_install.append(dep_name)
-            elif mode == "single":
-                # Only the main package, ignoring whether it's installed or not
-                to_install.append(dep_name)
-            else:  # 'missing' mode
-                if not self.lock.is_installed(dep_name):
-                    to_install.append(dep_name)
-
-        # If deps_only = True, we skip installing the actual named dep if it's in to_install
-        # This is how your old code separated "dependencies but not the package"
-        if deps_only:
-            # skip the last one?
-            # or skip all named? It's up to your old logic.
-            # Possibly we remove the last item from to_install:
-            # But it's ambiguous. We'll do a minimal approach:
-            for dep_name in dep_names:
-                if dep_name in to_install:
-                    to_install.remove(dep_name)
-
-        # If there's nothing to install, we exit
-        if not to_install:
-            mprint("Nothing to install!")
-            return
-
-        # If explain mode, just print
-        if explain:
-            mprint("<b>Dependencies to be installed (explain only):</b>")
-            for dn in to_install:
-                mprint("  - {}", dn)
-            return
-
-        # Actually install each dependency
-        for dn in to_install:
-            self._install_single_dependency(dn)
-
-        # Save lock
-        self.lock.save()
-
-    def _install_single_dependency(self, dep_name: str):
-        """
-        Creates a recipe instance from the manifest + global config,
-        runs it, and records the result in the lock file.
-        """
-        # 1) Find the dependency in the manifest
-        dep_entry = self.manifest.find_dependency(dep_name)
-        if not dep_entry:
-            mprint("<red>Error:</red> No dependency named '{}' in the manifest.", dep_name)
-            return
-
-        # 2) Check if it's already installed
-        if self.lock.is_installed(dep_name):
-            ipath = self.lock.get_dependency(dep_name).get("install_path", "")
-            mprint("<blue>{} is already installed at {}</blue>", dep_name, ipath)
-            return
-
-        # 3) Combine global config + top_dir + dep config
-        #    EdpmManifest now stores global config in global_config_block.
-        global_cfg = dict(self.manifest.global_config_block.data)
-        top_dir = self.top_dir
-        if not top_dir:
-            mprint("<red>No top_dir set. Please use --top-dir or define in lock file.</red>")
-            raise click.Abort()
-
-        # Our "app_path" convention: join top_dir + dep_name
-        global_cfg["app_path"] = os.path.join(top_dir, dep_name)
-
-        # Merge fields from the dependency's config_block
-        dep_cfg = dep_entry.config_block.data  # dict with e.g. branch, repo_address, build_threads, etc.
-
-        # Build final combined config
-        combined_config = {**global_cfg, **dep_cfg, "name": dep_entry.name}
-
-        # The recipe name is the same as the dependency's name (or fallback)
-
-        # 4) Create the recipe via RecipeManager using the dep's recipe type + combined_config
-        recipe_type = dep_entry.recipe  # e.g. "manual", "github-cmake-cpp", etc.
-        recipe = self.pm.recipes_by_name[dep_name]
-
-        # 5) Run the pipeline
-        mprint("<magenta>=========================================</magenta>")
-        mprint("<green>INSTALLING</green> : <blue>{}</blue>", dep_name)
-        mprint("<magenta>=========================================</magenta>\n")
-
-        try:
-            recipe.run_full_pipeline()
-        except Exception as e:
-            mprint("<red>Installation failed for {}:</red> {}", dep_name, e)
-            raise click.Abort()
-
-        # 6) Record results in the lock file
-        install_path = recipe.config.get("install_path", "")
-        self.lock.update_dependency(dep_name, {
-            "install_path": install_path,
-            "built_with_config": dict(combined_config),
-        })
-        mprint("<green>{} installed at {}</green>", dep_name, install_path)
-
-    # ------------------------------------------------------------------------
-    # Generating shell environment
-    # ------------------------------------------------------------------------
-    def generate_shell_env(self, shell="bash"):
-        """
-        Iterate over all installed dependencies, gather environment instructions,
-        produce a single shell script text. Then user can redirect to a file.
-        """
-        lines = []
-        lines.append("#!/usr/bin/env bash\n" if shell == "bash" else "#!/usr/bin/env csh\n")
-        lines.append("# EDPM environment script\n")
-
-        # For global environment from the manifest
-        global_env_actions = self.manifest.get_global_env_actions()
-        for act in global_env_actions:
-            if shell == "bash":
-                lines.append(act.gen_bash() + "\n")
-            else:
-                lines.append(act.gen_csh() + "\n")
-
-        # For each installed dependency, we create a recipe again, call gen_env() with { install_path: ... } from lock
-        for dep_name in sorted(self.lock.get_all_dependencies()):
-            dep_data = self.lock.get_dependency(dep_name)
-            # If there's no path, skip
-            ipath = dep_data.get("install_path", "")
-            if not ipath or not os.path.isdir(ipath):
-                continue
-            # Recreate a minimal recipe object to get environment steps
-            # Or you can store the recipe type in the lock as well.
-            # For now, we guess from the manifest
-            found = [d for d in self.manifest.dependencies if d.name == dep_name]
-            if not found:
-                continue
-            dep_entry = found[0]
-            # Build config
-            config_data = dict(dep_data.get("built_with_config", {}))
-            # Create recipe
-            recipe = self.pm.create_recipe(dep_entry.recipe, config_data)
-            # installed_data
-            installed_data = {"install_path": ipath}
-            steps = recipe.gen_env(installed_data)
-
-            lines.append(f"\n# ----- ENV for {dep_name} -----\n")
-            for step in steps:
-                if shell == "bash":
-                    lines.append(step.gen_bash() + "\n")
-                else:
-                    lines.append(step.gen_csh() + "\n")
-
-        return "".join(lines)
-
-    def save_shell_environment(self, shell="bash", filename=None):
-        """
-        Writes the environment script to disk.
-        Default filenames can be 'scipm_env.sh' or 'scipm_env.csh'.
-        """
-        if not filename:
-            filename = self.env_sh_path if shell == "bash" else self.env_csh_path
-
-        content = self.generate_shell_env(shell=shell)
-        with open(filename, "w", encoding="utf-8") as f:
-            f.write(content)
-        mprint("Environment script saved to {}", filename)
-
-
-def print_packets_info(api):
-    """
-    Prints a summary of which packages are installed vs. not installed,
-    using the new EdpmApi (which holds a manifest + lock file).
-    """
-    # 1) Gather all dependency names from the manifest
-    all_dep_names = [dep.name for dep in api.manifest.dependencies]
-
-    # 2) Determine which are installed by checking the lock
+    all_deps = [d.name for d in api.plan.dependencies()]
     installed_names = []
-    for dep_name in all_dep_names:
+    not_installed_names = []
+    for dep_name in all_deps:
         if api.lock.is_installed(dep_name):
             installed_names.append(dep_name)
+        else:
+            not_installed_names.append(dep_name)
 
-    # 3) Print installed packages
     if installed_names:
         mprint('\n<b><magenta>INSTALLED PACKAGES:</magenta></b>')
         for dep_name in sorted(installed_names):
@@ -306,11 +32,273 @@ def print_packets_info(api):
     else:
         mprint("\n<magenta>No packages currently installed.</magenta>")
 
-    # 4) Print not-installed packages
-    not_installed_names = [d for d in all_dep_names if d not in installed_names]
     if not_installed_names:
         mprint("\n<b><magenta>NOT INSTALLED:</magenta></b>\n(could be installed by 'edpm install')")
         for dep_name in sorted(not_installed_names):
             mprint(' <b><blue>{}</blue></b>', dep_name)
     else:
-        mprint("\nAll manifest packages appear to be installed.")
+        mprint("\nAll plan packages appear to be installed.")
+
+
+class EdpmApi:
+    """
+    Main EDPM API class.
+    Handles loading the plan file, the lock file, and orchestrates installs.
+    """
+
+    def __init__(self, plan_file="plan.edpm.yaml", lock_file="plan-lock.edpm.yaml"):
+        self.plan_file = plan_file
+        self.lock_file = lock_file
+
+        self.lock: LockfileConfig = LockfileConfig()
+        self.pm = RecipeManager()
+        self.plan: PlanFile = None
+
+    def load_all(self):
+        """
+        Load both the lock file and the plan file into memory,
+        and initialize the recipe manager.
+        """
+        self.lock.load(self.lock_file)
+        self.plan = PlanFile.load(self.plan_file)
+        self.pm.load_installers()
+
+    def ensure_lock_exists(self):
+        """
+        If the lock file does not exist or is empty, create it.
+        """
+        if not os.path.isfile(self.lock_file):
+            mprint("<green>Creating new lock file at {}</green>", self.lock_file)
+            self.lock.file_path = self.lock_file
+            self.lock.save()
+
+    @property
+    def top_dir(self) -> str:
+        """
+        Return the top-level directory where packages will be installed,
+        as recorded in the lock file.
+        """
+        return self.lock.top_dir
+
+    @top_dir.setter
+    def top_dir(self, path: str):
+        """
+        Update (or set) the top_dir in the lock file.
+        """
+        real_path = os.path.abspath(path)
+        self.lock.top_dir = real_path
+        self.lock.save()
+
+    def guess_recipe_for(self, pkg_name: str) -> str:
+        """
+        If the user did not specify a specific approach, guess one from known names.
+        (Kept for backward compatibility or custom usage.)
+        """
+        known = list(self.pm.recipes_by_name.keys())
+        if pkg_name in known:
+            return pkg_name
+        # Fallback to "manual" if truly unknown
+        return "manual"
+
+    def install_dependency_chain(self,
+                                 dep_names: List[str],
+                                 mode="missing",
+                                 explain=False,
+                                 deps_only=False):
+        """
+        Installs all dependencies in 'dep_names' if they are not yet installed,
+        respecting the chosen mode:
+          - 'missing': only install if not installed
+          - 'all'/'force': reinstall anyway
+          - 'single': install exactly those requested, ignoring chain
+        """
+        to_install = []
+        for dep_name in dep_names:
+            if mode == "missing":
+                if not self.lock.is_installed(dep_name):
+                    to_install.append(dep_name)
+            elif mode in ("all", "force", "single"):
+                to_install.append(dep_name)
+
+        if explain:
+            if not to_install:
+                mprint("Nothing to install!")
+            else:
+                mprint("<b>Dependencies to be installed (explain only):</b>")
+                for dn in to_install:
+                    mprint("  - {}", dn)
+            return
+
+        for dn in to_install:
+            self._install_single_dependency(dn)
+
+    def _install_single_dependency(self, dep_name: str):
+        """
+        Core routine to install a single dependency.
+        Grabs config from the PlanFile, merges with global config,
+        calls the relevant recipe steps, and updates the lock file on success.
+        """
+        # 1) Find the dependency in the plan
+        dep_obj = self.plan.find_dependency(dep_name)
+        if not dep_obj:
+            mprint("<red>Error:</red> No dependency named '{}' in the plan.", dep_name)
+            return
+
+        # Check if it is already installed
+        if self.lock.is_installed(dep_name):
+            ipath = self.lock.get_dependency(dep_name).get("install_path", "")
+            if os.path.isdir(ipath) and ipath:
+                mprint("<blue>{} is already installed at {}</blue>", dep_name, ipath)
+                return
+
+        # Merge global config + local config
+        global_cfg = dict(self.plan.global_config_block().data)
+        local_cfg = dict(dep_obj.config_block.data)
+        combined_config = {**global_cfg, **local_cfg}
+
+        # Ensure we have environment file set, or it is going to be fiasco during install
+        if "env_file_bash" not in combined_config:
+            bash_env, _ = self.get_env_script_paths()
+            combined_config["env_file_bash"] = bash_env
+
+        # Ensure we have a top_dir
+        top_dir = self.top_dir
+        if not top_dir:
+            mprint("<red>No top_dir set. Please use --top-dir or define in lock file.</red>")
+            sys.exit(1)
+
+        # e.g. /some/top_dir/MyLib
+        combined_config["app_path"] = os.path.join(top_dir, dep_name)
+
+        mprint("<magenta>=========================================</magenta>")
+        mprint("<green>INSTALLING</green> : <blue>{}</blue>", dep_name)
+        mprint("<magenta>=========================================</magenta>\n")
+
+        # Create and run the recipe
+        try:
+            # Instead of dep_entry.recipe, we pass dep_obj to let PM decide
+            recipe = self.pm.create_recipe(dep_obj.name, combined_config)
+
+            # Now when 'app_path' is set, we can preconfigure the recipe
+            recipe.preconfigure()
+
+            # Run installation!
+            recipe.run_full_pipeline()
+        except Exception as e:
+            mprint("<red>Installation failed for {}:</red> {}", dep_name, e)
+            raise
+
+        # 6) Resolve the final install_path
+        #    In a real scenario, the "maker" might set it in recipe.config["install_path"].
+        #    If not present, use a default.
+        final_install = recipe.config.get("install_path", "")
+        if not final_install:
+            # fallback: e.g. app_path/install
+            final_install = os.path.join(combined_config["app_path"], "install")
+            recipe.config["install_path"] = final_install
+
+        # 7) Update the lock file
+        self.lock.update_dependency(dep_name, {
+            "install_path": final_install,
+            "built_with_config": dict(combined_config),
+        })
+        self.lock.save()
+
+        mprint("<green>{} installed at {}</green>", dep_name, final_install)
+
+    def get_env_script_paths(self) -> (str, str):
+        """
+        Determine the paths to env.sh and env.csh based on:
+          1) The plan's directory
+          2) The global config overrides (env_file_bash, env_file_csh)
+          3) If the user sets an absolute path in the config, use it directly.
+             Otherwise, join it with the plan's directory.
+
+        Returns (bash_path, csh_path).
+        """
+        plan_dir = os.path.dirname(os.path.abspath(self.plan_file))
+
+        global_cfg = dict(self.plan.global_config_block().data)
+        bash_cfg_value = global_cfg.get("env_file_bash", "env.sh")
+        csh_cfg_value  = global_cfg.get("env_file_csh", "env.csh")
+
+        if os.path.isabs(bash_cfg_value):
+            bash_path = bash_cfg_value
+        else:
+            bash_path = os.path.join(plan_dir, bash_cfg_value)
+
+        if os.path.isabs(csh_cfg_value):
+            csh_path = csh_cfg_value
+        else:
+            csh_path = os.path.join(plan_dir, csh_cfg_value)
+
+        return bash_path, csh_path
+
+    def generate_shell_env(self, shell="bash") -> str:
+        """
+        Build a textual environment script (bash or csh) by combining:
+          - global environment
+          - each installed package environment
+        """
+        lines = []
+        if shell == "bash":
+            lines.append("#!/usr/bin/env bash\n")
+        else:
+            lines.append("#!/usr/bin/env csh\n")
+
+        lines.append("# EDPM environment script\n\n")
+
+        # 1) Global environment actions
+        global_env_actions = self.plan.get_global_env_actions()
+        for act in global_env_actions:
+            if shell == "bash":
+                lines.append(act.gen_bash() + "\n")
+            else:
+                lines.append(act.gen_csh() + "\n")
+
+        # 2) For each installed dependency, gather environment actions
+        all_deps = self.lock.get_all_dependencies()
+        for dep_name in sorted(all_deps):
+            dep_data = self.lock.get_dependency(dep_name)
+            ipath = dep_data.get("install_path", "")
+            if not ipath or not os.path.isdir(ipath):
+                continue
+
+            dep_obj = self.plan.find_dependency(dep_name)
+            if not dep_obj:
+                continue
+
+            lines.append(f"\n# ----- ENV for {dep_name} -----\n")
+            placeholders = {
+                "install_dir": ipath,
+                "location": ipath,  # for compatibility with old "manual" usage
+            }
+            for act in dep_obj.env_block().parse(placeholders):
+                if shell == "bash":
+                    lines.append(act.gen_bash() + "\n")
+                else:
+                    lines.append(act.gen_csh() + "\n")
+
+        return "".join(lines)
+
+    def save_shell_environment(self, shell="bash", filename=None):
+        """
+        Generate and save the environment script for 'shell' (bash or csh).
+        If filename is None, we derive it from:
+          - global config (env_file_bash / env_file_csh)
+          - else use defaults: env.sh / env.csh
+          - stored in the same folder as plan.edpm.yaml
+        """
+        if filename is None:
+            bash_path, csh_path = self.get_env_script_paths()
+            if shell == "bash":
+                filename = bash_path
+            else:
+                filename = csh_path
+
+        content = self.generate_shell_env(shell=shell)
+        os.makedirs(os.path.dirname(filename), exist_ok=True)
+
+        with open(filename, "w", encoding="utf-8") as f:
+            f.write(content)
+        mprint("Environment script saved to {}", filename)

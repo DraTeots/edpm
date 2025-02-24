@@ -64,17 +64,17 @@ dependencies:
 """
 
 @click.command()
-@click.option("--force", is_flag=True, default=False, help="Overwrite existing package.edpm.yaml if it already exists.")
+@click.option("--force", is_flag=True, default=False, help="Overwrite existing plan.edpm.yaml if it already exists.")
 @click.pass_context
 def init(ctx, force):
     """
-    Creates a minimal EDPM manifest template (package.edpm.yaml)
+    Creates a minimal EDPM plan template (plan.edpm.yaml)
     in the current directory with commented placeholders.
     """
     edpm_api = ctx.obj
-    # Ensure manifest & lock are loaded
+    # Ensure plan & lock are loaded
     assert isinstance(edpm_api, EdpmApi)
-    target_file = edpm_api.manifest_file
+    target_file = edpm_api.plan_file
 
 
     if os.path.isfile(target_file) and not force:
@@ -84,7 +84,7 @@ def init(ctx, force):
     with open(target_file, "w", encoding="utf-8") as f:
         f.write(TEMPLATE_CONTENT)
 
-    mprint("<green>Created minimal EDPM manifest:</green> {}", target_file)
+    mprint("<green>Created minimal EDPM plan:</green> {}", target_file)
     mprint(
         "You can now edit '{}' to define your dependencies or global config.\n"
         "Then run 'edpm install' or 'edpm config' to proceed.",

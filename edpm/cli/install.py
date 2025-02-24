@@ -13,7 +13,7 @@ from edpm.engine.api import EdpmApi  # EdpmApi is your new-based approach
 @click.option('--force', 'dep_mode', flag_value='single',
               help="Alias for --single. Force reinstall of a single package.")
 @click.option('--all', 'dep_mode', flag_value='all',
-              help="Installs all dependencies from the manifest, even if installed.")
+              help="Installs all dependencies from the plan, even if installed.")
 @click.option('--top-dir', default="", help="Override or set top_dir in the lock file.")
 @click.option('--explain', 'just_explain', is_flag=True, default=False,
               help="Print what would be installed but don't actually install.")
@@ -23,11 +23,11 @@ from edpm.engine.api import EdpmApi  # EdpmApi is your new-based approach
 @click.pass_context
 def install(ctx, dep_mode, names, top_dir, just_explain, deps_only):
     """
-    Installs packages (and their dependencies) from the manifest, updating the lock file.
+    Installs packages (and their dependencies) from the plan, updating the lock file.
 
     Use Cases:
-      1) 'edpm install' with no arguments installs EVERYTHING in the manifest.
-      2) 'edpm install <pkg>' adds <pkg> to the manifest if not present, then installs it.
+      1) 'edpm install' with no arguments installs EVERYTHING in the plan.
+      2) 'edpm install <pkg>' adds <pkg> to the plan if not present, then installs it.
     """
 
     edpm_api = ctx.obj
@@ -37,23 +37,23 @@ def install(ctx, dep_mode, names, top_dir, just_explain, deps_only):
     if top_dir:
         edpm_api.set_top_dir(top_dir)
 
-    # 3) If no arguments => install everything from the manifest
+    # 3) If no arguments => install everything from the plan
     if not names:
-        # "dep_names" = all from the manifest
-        dep_names = [dep.name for dep in edpm_api.manifest.dependencies]
+        # "dep_names" = all from the plan
+        dep_names = [dep.name for dep in edpm_api.plan.dependencies()]
         if not dep_names:
-            mprint("<red>No dependencies in the manifest!</red> "
+            mprint("<red>No dependencies in the plan!</red> "
                    "Please add packages or run 'edpm install <pkg>' to auto-add.")
             return
     else:
-        # If user provided package names, let's auto-add them to the manifest if not present
+        # If user provided package names, let's auto-add them to the plan if not present
         # Then those become dep_names
         dep_names = []
         for pkg_name in names:
-            # If the package is missing in the manifest, add it automatically
-            if not edpm_api.manifest.has_dependency(pkg_name):
-                mprint(f"<red>Error:</red> '{pkg_name}' is not in manifest!")
-                mprint(f"Please add it to manifest either by editing the file or by <blue>'edpm add'</blue> command")
+            # If the package is missing in the plan, add it automatically
+            if not edpm_api.plan.has_dependency(pkg_name):
+                mprint(f"<red>Error:</red> '{pkg_name}' is not in plan!")
+                mprint(f"Please add it to plan either by editing the file or by <blue>'edpm add'</blue> command")
                 exit(1)     # Does it normal to terminate like this?
 
             dep_names.append(pkg_name)

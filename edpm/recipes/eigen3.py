@@ -7,28 +7,26 @@ https://gitlab.com/libeigen/eigen.git
 import os
 
 from edpm.engine.env_gen import Prepend, Set, Append
-from edpm.engine.git_cmake_recipe import GitCmakeRecipe
+from edpm.engine.composed_recipe import ComposedRecipe
 
 
-class EigenRecipe(GitCmakeRecipe):
+class EigenRecipe(ComposedRecipe):
     """Provides data for building and installing Eicgen3 framework"""
 
-    def __init__(self):
-        super(EigenRecipe, self).__init__('eigen3')
-        self.config['branch'] = '3.4.0'
-        self.config['repo_address'] = 'https://gitlab.com/libeigen/eigen.git'
+    def __init__(self, config):
 
-    @staticmethod
-    def gen_env(data):
+        # Default values for the recipe
+        self.default_config = {
+            'fetch': 'git',
+            'make': 'cmake',
+            'branch': '3.4.0',
+            'url': 'https://gitlab.com/libeigen/eigen.git'
+        }
+        super().__init__(name='eigen3', config=config)
+
+
+    def gen_env(self, data):
         """Generates environments to be set"""
         path = data['install_path']
 
         yield Prepend('CMAKE_PREFIX_PATH', os.path.join(path, 'share/eigen3/cmake/'))
-
-    #
-    # OS dependencies are a map of software packets installed by os maintainers
-    # The map should be in form:
-    # os_dependencies = { 'required': {'ubuntu': "space separated packet names", 'centos': "..."},
-    #                     'optional': {'ubuntu': "space separated packet names", 'centos': "..."}
-    # The idea behind is to generate easy to use instructions: 'sudo apt-get install ... ... ... '
-    os_dependencies = {}

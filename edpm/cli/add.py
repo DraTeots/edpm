@@ -33,7 +33,7 @@ RECIPE_POSITIONAL_MAP = {
 @click.pass_context
 def add(ctx, recipe_type, branch, location, repo, option_list, name, extra_args):
     """
-    Add a new dependency to the EDPM manifest without installing it.
+    Add a new dependency to the EDPM plan without installing it.
 
     Examples:
       edpm add root
@@ -101,16 +101,16 @@ def add(ctx, recipe_type, branch, location, repo, option_list, name, extra_args)
         else:
             mprint("<red>Ignoring malformed --option '{}'. Expected key=value.</red>", opt)
 
-    # 7) Check if name already exists in the manifest
-    if api.manifest.has_dependency(name):
-        mprint("<red>Error:</red> A dependency named '{}' already exists in the manifest.", name)
+    # 7) Check if name already exists in the plan
+    if api.plan.has_dependency(name):
+        mprint("<red>Error:</red> A dependency named '{}' already exists in the plan.", name)
         return
 
-    # 8) Actually add it to the manifest
-    api.manifest.data["dependencies"].append(new_dep)
+    # 8) Actually add it to the plan
+    api.plan.data["dependencies"].append(new_dep)
 
-    # 9) Save the manifest
-    api.manifest.save(api.manifest_file)
+    # 9) Save the plan
+    api.plan.save(api.plan_file)
 
-    mprint("<green>Added dependency '{}</green>' with recipe='{}'.\nCheck package.edpm.yaml to customize further.",
+    mprint("<green>Added dependency '{}</green>' with recipe='{}'.\nCheck plan.edpm.yaml to customize further.",
            name, recipe_type)

@@ -4,7 +4,7 @@ import os
 import click
 
 
-from edpm.engine.api import ENV_CSH_PATH, ENV_SH_PATH, EdpmApi, print_packets_info
+from edpm.engine.api import EdpmApi, print_packets_info
 from edpm.engine.db import PacketStateDatabase
 from edpm.engine.output import markup_print as mprint
 

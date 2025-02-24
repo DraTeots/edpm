@@ -1,13 +1,13 @@
 """
 test_manifest.py
 
-Minimal unit tests for manifest.py using pytest.
+Minimal unit tests for plan.py using pytest.
 """
 
 import pytest
 import os
 from textwrap import dedent
-from edpm.engine.manifest import EdpmManifest
+from edpm.engine.manifest import PlanFile
 from edpm.engine.env_gen import Prepend, Append, Set
 
 @pytest.fixture
@@ -48,7 +48,7 @@ def sample_manifest_file(tmp_path):
     return manifest_path
 
 def test_manifest_loading(sample_manifest_file):
-    manifest = EdpmManifest.load(str(sample_manifest_file))
+    manifest = PlanFile.load(str(sample_manifest_file))
 
     # Check global config
     assert manifest.cxx_standard == 17
@@ -85,7 +85,7 @@ def test_manifest_loading(sample_manifest_file):
     assert isinstance(env_steps2[0], Prepend)
 
 def test_external_requirements(sample_manifest_file):
-    manifest = EdpmManifest.load(str(sample_manifest_file))
+    manifest = PlanFile.load(str(sample_manifest_file))
 
     # gather_requirements for apt
     apt_requirements = manifest.gather_requirements("apt")

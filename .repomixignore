@@ -1,0 +1,12 @@
+# Add patterns to ignore here, one per line
+# Example:
+# *.log
+# tmp/
+docker/
+envedpm.csh
+envedpm.sh
+LICENSE
+MANIFEST.in
+manifest_spec.md
+packaging.md
+pip_readme.md

@@ -26,10 +26,10 @@ def config(ctx, name_values):
       - 'branch=greenfield' is set in the 'jana' dependency config
     """
 
-    # Ensure manifest is loaded
+    # Ensure plan is loaded
     ectx = ctx.obj
-    if not ectx.manifest:
-        ectx.load_manifest_and_lock("package.edpm.yaml", "package-lock.edpm.yaml")
+    if not ectx.plan:
+        ectx.load_manifest_and_lock("plan.edpm.yaml", "plan-lock.edpm.yaml")
 
     if len(name_values) == 0:
         # Show global config
@@ -49,18 +49,18 @@ def _show_configs(ectx: EdpmApi, name: str):
     """
     if name == 'global':
         mprint("<b><magenta>global</magenta></b>:")
-        for k, v in ectx.manifest.global_config.items():
+        for k, v in ectx.plan.global_config.items():
             mprint(" <b><blue>{}</blue></b>: {}", k, v)
         return
 
     # Otherwise, it’s a dependency name
-    dep = ectx.manifest.find_dependency(name)
+    dep = ectx.plan.find_dependency(name)
     if not dep:
-        mprint("<red>Error:</red> No dependency named '{}' in the manifest.\n"
+        mprint("<red>Error:</red> No dependency named '{}' in the plan.\n"
                "Create one with:\n  edpm config {} recipe=<recipe_name>\n", name, name)
         return
 
-    # Print user-set config from the manifest
+    # Print user-set config from the plan
     mprint("<b><magenta>{}</magenta></b>:", name)
     dep_dict = dep.to_dict()  # Fields like recipe, branch, cmake_flags, etc.
     for k, v in dep_dict.items():
@@ -76,32 +76,32 @@ def _set_configs(ectx: EdpmApi, name_values):
     Parse multiple tokens of the form:
        global build_threads=4
        root branch=greenfield ...
-    Then update the manifest accordingly.
+    Then update the plan accordingly.
     """
     # parse them into { context_name -> {param: value, ...} }
     config_blob = _process_name_values(name_values)
 
-    # For each context, update either 'manifest.global_config' or a dependency
+    # For each context, update either 'plan.global_config' or a dependency
     for context_name, kvpairs in config_blob.items():
         if context_name == 'global':
             _update_global_config(ectx, kvpairs)
         else:
             _update_dep_config(ectx, context_name, kvpairs)
 
-    # Save the manifest so changes persist
-    ectx.manifest.save("package.edpm.yaml")
+    # Save the plan so changes persist
+    ectx.plan.save("plan.edpm.yaml")
 
 
 def _update_global_config(ectx: EdpmApi, kvpairs: dict):
     """
-    Merge fields into ectx.manifest.global_config
+    Merge fields into ectx.plan.global_config
     """
     mprint("<b><magenta>global</magenta></b>:")
     for k, v in kvpairs.items():
-        ectx.manifest.global_config[k] = v
+        ectx.plan.global_config[k] = v
 
     # show final
-    for k, v in ectx.manifest.global_config.items():
+    for k, v in ectx.plan.global_config.items():
         mprint(" <b><blue>{}</blue></b>: {}", k, v)
 
 
@@ -113,19 +113,19 @@ def _update_dep_config(ectx: EdpmApi, dep_name: str, kvpairs: dict):
     2) Merge param=val into that dependency's fields (branch, cmake_flags, etc.).
     3) Show final result.
     """
-    dep = ectx.manifest.find_dependency(dep_name)
+    dep = ectx.plan.find_dependency(dep_name)
     if not dep:
         # Possibly the user is creating a brand-new dependency
         recipe = kvpairs.get("recipe", None)
         if not recipe:
-            mprint("<red>Error:</red> No dependency named '{}' in the manifest, and no 'recipe=...' provided.\n"
+            mprint("<red>Error:</red> No dependency named '{}' in the plan, and no 'recipe=...' provided.\n"
                    "Please do:\n  edpm config {} recipe=<recipe_name>\n", dep_name, dep_name)
             return
         # Create new dependency
-        ectx.manifest.add_dependency(name=dep_name, recipe=recipe)
+        ectx.plan.add_dependency(name=dep_name, recipe=recipe)
 
         # Now that it’s created, retrieve it
-        dep = ectx.manifest.find_dependency(dep_name)
+        dep = ectx.plan.find_dependency(dep_name)
 
     # Now dep exists, merge fields
     # e.g. if kvpairs has branch=..., we do dep.branch = ...

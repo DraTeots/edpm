@@ -1,6 +1,6 @@
 import click
 
-from edpm.engine.api import EdpmApi, ENV_SH_PATH, ENV_CSH_PATH
+from edpm.engine.api import EdpmApi
 
 
 @click.command()
@@ -54,8 +54,9 @@ So there are 3 ways of managing environment variables
     else:
         print(ectx.pm.gen_bash_env_text(ectx.db.get_active_installs()))
 
+    (bash_path, csh_path) = api.get_env_script_paths()
     print("# env command also regenerated files:")
-    print("# {} ".format(ectx.config[ENV_SH_PATH]))
-    print("# {} ".format(ectx.config[ENV_CSH_PATH]))
+    print("# {} ".format(bash_path))
+    print("# {} ".format(csh_path))
     ectx.save_default_bash_environ()
     ectx.save_default_csh_environ()
