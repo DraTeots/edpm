@@ -223,7 +223,7 @@ class CmakeMaker(IMaker):
         cmake_user_flags = self.config.get("cmake_user_flags", "")
         # Compose a single line. This is up to your usage style:
         self.config["build_cmd"] = (
-            f"cmake -DCMAKE_INSTALL_PREFIX={self.config['install_path']} "
+            f"cmake -B {self.config['build_path']} -DCMAKE_INSTALL_PREFIX={self.config['install_path']} "
             f"-DCMAKE_CXX_STANDARD={cxx_std} "
             f"-DCMAKE_BUILD_TYPE={self.config['cmake_build_type']} "
             f"{cmake_flags} {cmake_user_flags}"

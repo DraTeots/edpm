@@ -35,7 +35,7 @@ def install(ctx, dep_mode, names, top_dir, just_explain, deps_only):
 
     # 2) Possibly override top_dir
     if top_dir:
-        edpm_api.set_top_dir(top_dir)
+        edpm_api.top_dir = top_dir
 
     # 3) If no arguments => install everything from the plan
     if not names:
