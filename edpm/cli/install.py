@@ -10,18 +10,16 @@ from edpm.engine.api import EdpmApi  # EdpmApi is your new-based approach
               help="Installs only missing dependencies (default).")
 @click.option('--single', 'dep_mode', flag_value='single',
               help="Installs only the specified package(s), ignoring whether they're installed.")
-@click.option('--force', 'dep_mode', flag_value='single',
-              help="Alias for --single. Force reinstall of a single package.")
 @click.option('--all', 'dep_mode', flag_value='all',
               help="Installs all dependencies from the plan, even if installed.")
+@click.option('--force', is_flag=True, default=False,
+              help="Force rebuild/reinstall even if already installed.")
 @click.option('--top-dir', default="", help="Override or set top_dir in the lock file.")
 @click.option('--explain', 'just_explain', is_flag=True, default=False,
               help="Print what would be installed but don't actually install.")
-@click.option('--deps-only', is_flag=True, default=False,
-              help="Install only the dependencies, not the specified package(s).")
 @click.argument('names', nargs=-1)
 @click.pass_context
-def install(ctx, dep_mode, names, top_dir, just_explain, deps_only):
+def install(ctx, dep_mode, names, top_dir, just_explain, force):
     """
     Installs packages (and their dependencies) from the plan, updating the lock file.
 
@@ -63,7 +61,7 @@ def install(ctx, dep_mode, names, top_dir, just_explain, deps_only):
         dep_names=dep_names,
         mode=dep_mode,
         explain=just_explain,
-        deps_only=deps_only
+        force=force
     )
 
     # 5) If not just_explain, optionally generate environment scripts

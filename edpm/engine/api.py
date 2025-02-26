@@ -104,7 +104,7 @@ class EdpmApi:
                                  dep_names: List[str],
                                  mode="missing",
                                  explain=False,
-                                 deps_only=False):
+                                 force=False):
         """
         Installs all dependencies in 'dep_names' if they are not yet installed,
         respecting the chosen mode:
@@ -130,9 +130,9 @@ class EdpmApi:
             return
 
         for dn in to_install:
-            self._install_single_dependency(dn)
+            self._install_single_dependency(dn, force)
 
-    def _install_single_dependency(self, dep_name: str):
+    def _install_single_dependency(self, dep_name: str, force: bool):
         """
         Core routine to install a single dependency.
         Grabs config from the PlanFile, merges with global config,
@@ -145,7 +145,7 @@ class EdpmApi:
             return
 
         # Check if it is already installed
-        if self.lock.is_installed(dep_name):
+        if self.lock.is_installed(dep_name) and not force:
             ipath = self.lock.get_dependency(dep_name).get("install_path", "")
             if os.path.isdir(ipath) and ipath:
                 mprint("<blue>{} is already installed at {}</blue>", dep_name, ipath)

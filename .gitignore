@@ -202,3 +202,5 @@ env\.csh
 env\.sh
 
 .idea/
+
+**/repomix-output*
