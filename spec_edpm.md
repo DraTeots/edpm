@@ -268,3 +268,60 @@ This design gives EDPM v3 a **clear, maintainable architecture** that:
 
 Once implemented, EDPM offers a reproducible, easily scriptable approach to installing (and reusing) scientific software
 packages—*without* the overhead or complexity of larger package managers.
+
+Below is an **updated specification** for EDPM v3 that incorporates the **input/output file** mechanism for environment and CMake integration scripts. This update clarifies how users can configure **“in/out”** files (e.g., `env_bash_in`, `env_bash_out`, `cmake_toolchain_in`, `cmake_toolchain_out`, etc.) within the **global** config of their **Plan** file.
+
+---
+
+## 8. **Additional Global Configuration: In/Out Files**
+
+A key enhancement is that **EDPM** can **merge** or **append** its generated output into “existing” user files, or produce brand new files. This is controlled by **in** and **out** file variables in the **global config** block of the Plan. For each integration script, you can set:
+
+- **`env_bash_in` / `env_bash_out`**
+   - If you specify `env_bash_in`, EDPM will read that file as a **template**. It looks for a marker line like
+     ```bash
+     # {{{EDPM-CONTENT}}}
+     ```  
+     If found, EDPM will inject the generated environment content in place of that marker.  
+     If not found, EDPM appends the environment content to the end.
+   - The resulting merged content is saved to `env_bash_out` (or if `env_bash_out` is empty, the user can skip saving).
+
+- **`env_csh_in` / `env_csh_out`**
+   - Same approach for C Shell environment scripts.
+
+- **`cmake_toolchain_in` / `cmake_toolchain_out`**
+   - For a `.cmake` toolchain/config file.
+   - If `cmake_toolchain_in` is set, EDPM will load it, look for the marker line:
+     ```cmake
+     # {{{EDPM-CONTENT}}}
+     ```  
+     If found, it replaces that line with EDPM’s auto-generated lines. If not found, EDPM appends.
+   - Then writes the final result to `cmake_toolchain_out`.
+
+- **`cmake_presets_in` / `cmake_presets_out`**
+   - A JSON-based approach. If `cmake_presets_in` is set, EDPM will load it as JSON.
+   - EDPM merges in the discovered variables/paths (e.g., appending to `cacheVariables`), then writes out the final JSON to `cmake_presets_out`.
+
+### Example Excerpt of `global.config`:
+
+```yaml
+global:
+  config:
+    # Environment files
+    env_bash_in: "/home/user/my_bash_base.sh"
+    env_bash_out: "/home/user/my_full_bash.sh"
+    env_csh_in: "/home/user/my_csh_base.csh"
+    env_csh_out: "/home/user/my_full_csh.csh"
+
+    # CMake files
+    cmake_toolchain_in: "/home/user/MyBaseToolchain.cmake"
+    cmake_toolchain_out: "/home/user/MyCompleteToolchain.cmake"
+    cmake_presets_in: "/home/user/BaseCMakePresets.json"
+    cmake_presets_out: "/home/user/MergedCMakePresets.json"
+```
+
+When running `edpm env save`, EDPM merges the generated content with those input files (if present) and writes the results to the specified output files.
+
+**If any “_out” variable is empty or missing, EDPM does not save** that specific file (and may display a warning). If any “_in” variable is empty, EDPM simply **doesn’t** do the merging logic and either writes a brand-new file (if `_out` is set) or prints a warning.
+
+---

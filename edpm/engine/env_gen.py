@@ -183,3 +183,67 @@ class Comment(EnvironmentManipulation):
     def update_python_env(self):
         """Sets environment internally for python"""
         pass    # Just nothing to do!
+
+# edpm/engine/env_gen.py
+
+class CmakeSet(EnvironmentManipulation):
+    """
+    A CMake directive to set(VAR VALUE).
+    We'll implement gen_cmake_line() to produce a line in EDPMConfig.cmake.
+    For shell/csh we do nothing or just a comment.
+    """
+    def __init__(self, name, value):
+        super().__init__(name, value)
+
+    def gen_bash(self):
+        # We do nothing for shell. Could add a comment or skip
+        return f""
+
+    def gen_csh(self):
+        # Same idea for csh
+        return f""
+
+    def gen_cmake_line(self):
+        # We'll assume string or path usage. Adjust as needed:
+        return f'set({self.name} "{self.value}" CACHE PATH "Set by EDPM")'
+
+
+class CmakeModulePath(Prepend):
+    """
+    A CMake directive to prepend a path to a semicolon-delimited variable
+    (like CMAKE_PREFIX_PATH).
+    """
+    def __init__(self, path):
+        super().__init__("CMAKE_MODULE_PATH", path)
+
+
+    def gen_cmake_line(self):
+        # We'll generate something like:
+        # if(NOT DEFINED var) set(var "") endif()
+        # list(APPEND var "path/to/dir")
+        #
+        # or you could do the "prepend" approach. Some folks prefer "APPEND" for everything,
+        # but let's emulate the EDPM approach:
+        return f'if(NOT DEFINED CMAKE_MODULE_PATH)\n'\
+               f'   set(CMAKE_MODULE_PATH "")\n'\
+               f'endif()\n'\
+               f'list(INSERT CMAKE_MODULE_PATH 0 "{self.value}")'.strip()
+
+
+class CmakeLine(EnvironmentManipulation):
+    """
+    Allows a raw line to be inserted into EDPMConfig.cmake, e.g.
+    'find_package(Clhep REQUIRED)'
+    """
+    def __init__(self, cmake_text):
+        super().__init__(name="", value="")
+        self.cmake_text = cmake_text
+
+    def gen_bash(self):
+        return ""
+
+    def gen_csh(self):
+        return ""
+
+    def gen_cmake_line(self):
+        return self.cmake_text

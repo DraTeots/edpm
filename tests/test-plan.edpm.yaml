@@ -32,6 +32,10 @@ global:
   - append:
       PYTHONPATH: /usr/local/global/python
 
-  config: {}
+  config:
+    env_bash_out: /mnt/e/dev/edpm/tests/temp/env.sh
+    env_csh_out: /mnt/e/dev/edpm/tests/env.csh
+    cmake_toolchain_out: /mnt/e/dev/edpm/tests/CmakeToolchain.cmake
+    cmake_presets_out: /mnt/e/dev/edpm/tests/Edpm.presets.json
 dependencies:
   - eigen3

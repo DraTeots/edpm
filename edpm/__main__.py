@@ -12,14 +12,14 @@ from edpm.engine.output import markup_print as mprint
 from edpm import version
 
 # CLI Commands from your submodules
-from edpm.cli.env import env as env_group
+from edpm.cli.env import env_group
 from edpm.cli.install import install as install_group
 from edpm.cli.find import find as find_group
 from edpm.cli.req import req as requirements_command
 from edpm.cli.set import set as set_command
 from edpm.cli.rm import rm as rm_command
 from edpm.cli.pwd import pwd as pwd_command
-from edpm.cli.clean import clean as clean_command
+from edpm.cli.clean import clean_command
 from edpm.cli.info import info as info_command
 from edpm.cli.config import config as config_command
 from edpm.cli.init import init as init_command
@@ -113,7 +113,7 @@ def edpm_cli(ctx, plan, lock, top_dir):
 # Register all subcommands
 edpm_cli.add_command(install_group)
 # edpm_cli.add_command(find_group)
-# edpm_cli.add_command(env_group)
+edpm_cli.add_command(env_group)
 # edpm_cli.add_command(requirements_command)
 # edpm_cli.add_command(set_command)
 # edpm_cli.add_command(rm_command)

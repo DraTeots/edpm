@@ -9,6 +9,11 @@ from edpm.engine.output import markup_print as mprint
 from edpm.engine.recipe_manager import RecipeManager
 from edpm.engine.planfile import PlanFile
 
+# We rely on the new Generators, but do NOT define environment
+# or cmake generation methods here. Just references:
+from edpm.engine.generators.environment_generator import EnvironmentGenerator
+from edpm.engine.generators.cmake_generator import CmakeGenerator
+
 
 def print_packets_info(api: "EdpmApi"):
     """
@@ -74,30 +79,23 @@ class EdpmApi:
 
     @property
     def top_dir(self) -> str:
-        """
-        Return the top-level directory where packages will be installed,
-        as recorded in the lock file.
-        """
+        """Return the top-level directory where packages will be installed, from lock file."""
         return self.lock.top_dir
 
     @top_dir.setter
     def top_dir(self, path: str):
-        """
-        Update (or set) the top_dir in the lock file.
-        """
         real_path = os.path.abspath(path)
         self.lock.top_dir = real_path
         self.lock.save()
 
     def guess_recipe_for(self, pkg_name: str) -> str:
         """
-        If the user did not specify a specific approach, guess one from known names.
-        (Kept for backward compatibility or custom usage.)
+        If the user didn't explicitly set a recipe, guess from known recipes
+        or default to 'manual'.
         """
         known = list(self.pm.recipes_by_name.keys())
         if pkg_name in known:
             return pkg_name
-        # Fallback to "manual" if truly unknown
         return "manual"
 
     def install_dependency_chain(self,
@@ -108,17 +106,14 @@ class EdpmApi:
         """
         Installs all dependencies in 'dep_names' if they are not yet installed,
         respecting the chosen mode:
-          - 'missing': only install if not installed
-          - 'all'/'force': reinstall anyway
-          - 'single': install exactly those requested, ignoring chain
+          - mode="missing": only install if not installed
+          - mode="all" or force=True: reinstall anyway
         """
-        to_install = []
-        for dep_name in dep_names:
-            if mode == "missing":
-                if not self.lock.is_installed(dep_name):
-                    to_install.append(dep_name)
-            elif mode in ("all", "force", "single"):
-                to_install.append(dep_name)
+        to_install = [
+            dep_name
+            for dep_name in dep_names
+            if force or not self.lock.is_installed(dep_name)
+        ]
 
         if explain:
             if not to_install:
@@ -135,69 +130,56 @@ class EdpmApi:
     def _install_single_dependency(self, dep_name: str, force: bool):
         """
         Core routine to install a single dependency.
-        Grabs config from the PlanFile, merges with global config,
-        calls the relevant recipe steps, and updates the lock file on success.
         """
-        # 1) Find the dependency in the plan
         dep_obj = self.plan.find_dependency(dep_name)
         if not dep_obj:
             mprint("<red>Error:</red> No dependency named '{}' in the plan.", dep_name)
             return
 
-        # Check if it is already installed
+        # If already installed and not forcing, skip
         if self.lock.is_installed(dep_name) and not force:
             ipath = self.lock.get_dependency(dep_name).get("install_path", "")
             if os.path.isdir(ipath) and ipath:
                 mprint("<blue>{} is already installed at {}</blue>", dep_name, ipath)
                 return
 
-        # Merge global config + local config
+        # Merge global + local config
         global_cfg = dict(self.plan.global_config_block().data)
         local_cfg = dict(dep_obj.config_block.data)
         combined_config = {**global_cfg, **local_cfg}
 
-        # Ensure we have environment file set, or it is going to be fiasco during install
+        # We do a minimal fallback for "env_file_bash" if the user didn't set it:
         if "env_file_bash" not in combined_config:
-            bash_env, _ = self.get_env_script_paths()
-            combined_config["env_file_bash"] = bash_env
+            plan_dir = os.path.dirname(os.path.abspath(self.plan_file))
+            # fallback to plan_dir/env.sh
+            combined_config["env_file_bash"] = os.path.join(plan_dir, "env.sh")
 
-        # Ensure we have a top_dir
         top_dir = self.top_dir
         if not top_dir:
-            mprint("<red>No top_dir set. Please use --top-dir or define in lock file.</red>")
+            mprint("<red>No top_dir set. Please use --top-dir or define it in the lock file.</red>")
             sys.exit(1)
 
-        # e.g. /some/top_dir/MyLib
         combined_config["app_path"] = os.path.join(top_dir, dep_name)
 
         mprint("<magenta>=========================================</magenta>")
         mprint("<green>INSTALLING</green> : <blue>{}</blue>", dep_name)
         mprint("<magenta>=========================================</magenta>\n")
 
-        # Create and run the recipe
+        # Create the recipe, run the pipeline
         try:
-            # Instead of dep_entry.recipe, we pass dep_obj to let PM decide
             recipe = self.pm.create_recipe(dep_obj.name, combined_config)
-
-            # Now when 'app_path' is set, we can preconfigure the recipe
             recipe.preconfigure()
-
-            # Run installation!
             recipe.run_full_pipeline()
         except Exception as e:
             mprint("<red>Installation failed for {}:</red> {}", dep_name, e)
             raise
 
-        # 6) Resolve the final install_path
-        #    In a real scenario, the "maker" might set it in recipe.config["install_path"].
-        #    If not present, use a default.
         final_install = recipe.config.get("install_path", "")
         if not final_install:
-            # fallback: e.g. app_path/install
             final_install = os.path.join(combined_config["app_path"], "install")
             recipe.config["install_path"] = final_install
 
-        # 7) Update the lock file
+        # Update lock file
         self.lock.update_dependency(dep_name, {
             "install_path": final_install,
             "built_with_config": dict(combined_config),
@@ -206,99 +188,15 @@ class EdpmApi:
 
         mprint("<green>{} installed at {}</green>", dep_name, final_install)
 
-    def get_env_script_paths(self) -> (str, str):
-        """
-        Determine the paths to env.sh and env.csh based on:
-          1) The plan's directory
-          2) The global config overrides (env_file_bash, env_file_csh)
-          3) If the user sets an absolute path in the config, use it directly.
-             Otherwise, join it with the plan's directory.
+    #
+    # Provide the new generator creation
+    #
+    def create_environment_generator(self) -> EnvironmentGenerator:
+        if not self.plan or not self.lock:
+            self.load_all()
+        return EnvironmentGenerator(self.plan, self.lock)
 
-        Returns (bash_path, csh_path).
-        """
-        plan_dir = os.path.dirname(os.path.abspath(self.plan_file))
-
-        global_cfg = dict(self.plan.global_config_block().data)
-        bash_cfg_value = global_cfg.get("env_file_bash", "env.sh")
-        csh_cfg_value  = global_cfg.get("env_file_csh", "env.csh")
-
-        if os.path.isabs(bash_cfg_value):
-            bash_path = bash_cfg_value
-        else:
-            bash_path = os.path.join(plan_dir, bash_cfg_value)
-
-        if os.path.isabs(csh_cfg_value):
-            csh_path = csh_cfg_value
-        else:
-            csh_path = os.path.join(plan_dir, csh_cfg_value)
-
-        return bash_path, csh_path
-
-    def generate_shell_env(self, shell="bash") -> str:
-        """
-        Build a textual environment script (bash or csh) by combining:
-          - global environment
-          - each installed package environment
-        """
-        lines = []
-        if shell == "bash":
-            lines.append("#!/usr/bin/env bash\n")
-        else:
-            lines.append("#!/usr/bin/env csh\n")
-
-        lines.append("# EDPM environment script\n\n")
-
-        # 1) Global environment actions
-        global_env_actions = self.plan.get_global_env_actions()
-        for act in global_env_actions:
-            if shell == "bash":
-                lines.append(act.gen_bash() + "\n")
-            else:
-                lines.append(act.gen_csh() + "\n")
-
-        # 2) For each installed dependency, gather environment actions
-        all_deps = self.lock.get_all_dependencies()
-        for dep_name in sorted(all_deps):
-            dep_data = self.lock.get_dependency(dep_name)
-            ipath = dep_data.get("install_path", "")
-            if not ipath or not os.path.isdir(ipath):
-                continue
-
-            dep_obj = self.plan.find_dependency(dep_name)
-            if not dep_obj:
-                continue
-
-            lines.append(f"\n# ----- ENV for {dep_name} -----\n")
-            placeholders = {
-                "install_dir": ipath,
-                "location": ipath,  # for compatibility with old "manual" usage
-            }
-            for act in dep_obj.env_block().parse(placeholders):
-                if shell == "bash":
-                    lines.append(act.gen_bash() + "\n")
-                else:
-                    lines.append(act.gen_csh() + "\n")
-
-        return "".join(lines)
-
-    def save_shell_environment(self, shell="bash", filename=None):
-        """
-        Generate and save the environment script for 'shell' (bash or csh).
-        If filename is None, we derive it from:
-          - global config (env_file_bash / env_file_csh)
-          - else use defaults: env.sh / env.csh
-          - stored in the same folder as plan.edpm.yaml
-        """
-        if filename is None:
-            bash_path, csh_path = self.get_env_script_paths()
-            if shell == "bash":
-                filename = bash_path
-            else:
-                filename = csh_path
-
-        content = self.generate_shell_env(shell=shell)
-        os.makedirs(os.path.dirname(filename), exist_ok=True)
-
-        with open(filename, "w", encoding="utf-8") as f:
-            f.write(content)
-        mprint("Environment script saved to {}", filename)
+    def create_cmake_generator(self) -> CmakeGenerator:
+        if not self.plan or not self.lock:
+            self.load_all()
+        return CmakeGenerator(self.plan, self.lock)

@@ -3,125 +3,128 @@ https://github.com/JeffersonLab/JANA4ML4FPGA
 
 
 """
-
 import os
+import platform
 
-from edpm.engine.env_gen import Set, Prepend
-from edpm.engine.recipe import Recipe
-from edpm.engine.commands import run, env, workdir
+from edpm.engine.composed_recipe import ComposedRecipe
+from edpm.engine.env_gen import Set, Prepend, Append, RawText
+from edpm.engine.commands import is_not_empty_dir
+from distutils.dir_util import mkpath
 
+class Jana4ml4fpgaRecipe(ComposedRecipe):
+    """
+    Installs the JANA4ML4FPGA project from Git + CMake.
 
-class Jana4ml4fpgaRecipe(Recipe):
-    """Provides data for building and installing JANA framework
-
-    PackageInstallationContext is located in recipe.py and contains the next standard package variables:
-
-    version      = 'v{}-{:02}-{:02}'                 # Stringified version. Used to create directories and so on
-    glb_app_path = Context.work_dir                  # The directory where all other packets are installed
-    source_path  = {app_path}/src/{version}          # Where the sources for the current version are located
-    build_path   = {app_path}/build/{version}        # Where sources are built. Kind of temporary dir
-    install_path = {app_path}/root-{version}         # Where the binary installation is
+    Original repo: https://github.com/JeffersonLab/JANA4ML4FPGA
     """
 
-    def __init__(self):
+    # OS dependencies (if you want to use `edpm req`):
+    os_dependencies = {
+        'required': {
+            'ubuntu18': "libspdlog-dev",
+            'ubuntu22': "libspdlog-dev",
+            'centos7':  "spdlog-devel",
+            'centos8':  "spdlog-devel"
+        },
+        'optional': {}
+    }
+
+    # Possibly define cmake_deps_flag_names if you use them in your build, e.g. mapping 'root' -> 'ROOT_DIR'
+    cmake_deps_flag_names = {
+        "root": "ROOT_DIR",
+        "jana": "JANA_DIR",
+        "genfit": "GENFIT_DIR",
+        "eic-smear": "EIC_SMEAR_DIR",
+        "hepmc": "HEPMC_DIR"
+    }
+
+    def __init__(self, config):
+        # Provide minimal defaults; user can override in plan
+        self.default_config = {
+            'fetch': 'git',
+            'make': 'cmake',
+            'url': 'https://github.com/JeffersonLab/JANA4ML4FPGA.git',
+            'branch': 'main',
+            'cxx_standard': 17,
+            'cmake_build_type': 'RelWithDebInfo',
+            'build_threads': 4,
+            # 'cmake_flags': '',     # user can override or set in plan
+        }
+        super().__init__(name='jana4ml4fpga', config=config)
+
+    def preconfigure(self):
         """
+        Combine user-provided cmake flags with defaults for Jana4ml4fpga.
         """
-        super(Jana4ml4fpgaRecipe, self).__init__('jana4ml4fpga')
-        self.config['repo_address'] = 'https://github.com/JeffersonLab/JANA4ML4FPGA'
-        self.required_deps = ['root', 'jana2']
-        self.config['branch'] = 'main'
+        cxx_std = self.config.get('cxx_standard', 17)
+        # We can override the 'source_path' and 'build_threads' as needed
+        source_path = self.config.get('source_path', "")
+        cmake_build_type = self.config.get('cmake_build_type', 'RelWithDebInfo')
+        build_threads = self.config.get('build_threads', 4)
 
-    def setup(self, db):
-        """Sets all variables like source dirs, build dirs, etc"""
+        # Merge user cmake_flags or cmake_custom_flags
+        user_flags = self.config.get('cmake_flags', "")
+        custom_flags = self.config.get('cmake_custom_flags', "")
 
-        # Git download link. Clone with shallow copy
-        self.config['source_path'] = "{app_path}/jana4ml4fpga-{branch}".format(**self.config)
+        # Construct final cmake invocation
+        # The typical pattern is:
+        #   cmake -DCMAKE_INSTALL_PREFIX=... -DCMAKE_CXX_STANDARD=... <source> && cmake --build . ...
+        # We'll store them in 'cmake_flags' for ComposedRecipe to use
+        line = [
+            f"-DCMAKE_CXX_STANDARD={cxx_std}",
+            f"-DCMAKE_BUILD_TYPE={cmake_build_type}",
+            f"-DCMAKE_INSTALL_PREFIX={self.config.get('install_path','')}",
+            source_path  # last argument to cmake is the source path
+        ]
+        merged_flags = " ".join([user_flags, custom_flags, " ".join(line)]).strip()
+        self.config['cmake_flags'] = merged_flags
+        self.config['build_threads'] = build_threads
 
-        # The directory for cmake build
-        self.config['build_path'] = "{app_path}/jana4ml4fpga-{branch}/cmake-build-debug".format(**self.config)
+    def fetch(self):
+        """
+        Shallow Git clone if requested; skip if source_path is non-empty.
+        """
+        source_path = self.config.get('source_path', "")
+        if source_path and is_not_empty_dir(source_path):
+            return  # Already exists
 
-        self.config['install_path'] = "{app_path}/jana4ml4fpga-{branch}".format(**self.config)
+        from edpm.engine.commands import run
+        shallow_flag = ""
+        if self.config.get('shallow', False):
+            shallow_flag = "--depth 1"
+        branch = self.config.get('branch', 'main')
+        url = self.config.get('url')
+        clone_cmd = f'git clone {shallow_flag} -b {branch} {url} "{source_path}"'
+        mkpath(source_path)
+        run(clone_cmd)
 
-        self.config['clone_command'] = "git clone -b {branch} {repo_address} {source_path}" \
-            .format(**self.config)
-
-        # cmake command:
-        # the  -Wno-dev  flag is to ignore the project developers cmake warnings for policy CMP0075
-        self.config['build_cmd'] = "cmake -DCMAKE_INSTALL_PREFIX={install_path} -DCMAKE_CXX_STANDARD={cxx_standard} {source_path}" \
-                                   "&& cmake --build . -- -j {build_threads}" \
-                                   "&& cmake --build . --target install" \
-            .format(**self.config)
-
-    def step_install(self):
-        self.step_clone()
-        self.step_build()
-
-    def step_clone(self):
-        """Clones JANA from github mirror"""
-
-        # Check the directory exists and not empty
-        if self.source_dir_is_not_empty():
-            return  # The directory exists and is not empty. Nothing to do
-
-        run('mkdir -p {source_path}'.format(**self.config))   # Create the directory
-        run(self.config['clone_command'])                               # Execute git clone command
-
-    def step_build(self):
-        """Builds JANA from the ground"""
-
-        # Create build directory
-        run('mkdir -p {}'.format(self.config['build_path']))
-
-        # go to our build directory
-        workdir(self.config['build_path'])
-
-        # run scons && scons install
-        run(self.config['build_cmd'])
-
-    def step_reinstall(self):
-        """Delete everything and start over"""
-
-        # clear sources directories if needed
-        run('rm -rf {}'.format(self.app_path))
-
-        # Now run build root
-        self.step_install()
-
-    @staticmethod
-    def gen_env(data):
-        """Generates environments to be set"""
+    def gen_env(self, data):
+        """
+        Sets environment variables for JANA4ML4FPGA,
+        including PATH, JANA_PLUGIN_PATH, and library paths.
+        """
         install_path = data['install_path']
         yield Set('jana4ml4fpga_HOME', install_path)
         yield Prepend('JANA_PLUGIN_PATH', os.path.join(install_path, 'plugins'))
         yield Prepend('PATH', os.path.join(install_path, 'bin'))
 
-        lib_path = os.path.join(install_path, 'lib')  # on some platforms
-        lib64_path = os.path.join(install_path, 'lib64')  # on some platforms
-
+        lib_path = os.path.join(install_path, 'lib')
+        lib64_path = os.path.join(install_path, 'lib64')
         if os.path.isdir(lib64_path):
             yield Prepend('LD_LIBRARY_PATH', lib64_path)
         else:
             yield Prepend('LD_LIBRARY_PATH', lib_path)
 
-    #
-    # OS dependencies are a map of software packets installed by os maintainers
-    # The map should be in form:
-    # os_dependencies = { 'required': {'ubuntu': "space separated packet names", 'centos': "..."},
-    #                     'optional': {'ubuntu': "space separated packet names", 'centos': "..."}
-    # The idea behind is to generate easy to use instructions: 'sudo apt-get install ... ... ... '
-    os_dependencies = {
-            'ubuntu18': "libspdlog-dev",
-            'ubuntu22': "libspdlog-dev",
-            'centos7': "spdlog-devel",
-            'centos8': "spdlog-devel"
-    }
+    def patch(self):
+        """
+        If any patch steps are needed, place them here.
+        """
+        pass
 
-    # Flags that can me made in cmake
-    cmake_deps_flag_names = {
-        "root": "ROOT_DIR",             # Cern root installation
-        "jana": 'JANA_DIR',             # JANA2 installation directory
-        'genfit': 'GENFIT_DIR',         # Genfit2  installation directory
-        'eic-smear': 'EIC_SMEAR_DIR',   # EIC-smear smearing packet
-        'hepmc': 'HEPMC_DIR'
-    }
+    def post_install(self):
+        """
+        Any post-install steps if needed.
+        """
+        pass
+
 

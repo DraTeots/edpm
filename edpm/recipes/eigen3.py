@@ -1,12 +1,11 @@
 """
 This file provides information of how to build and configure Eigen3 packet:
 https://gitlab.com/libeigen/eigen.git
-
 """
 
 import os
 
-from edpm.engine.env_gen import Prepend, Set, Append
+from edpm.engine.env_gen import Prepend, Set, Append, CmakeModulePath
 from edpm.engine.composed_recipe import ComposedRecipe
 
 
@@ -27,6 +26,5 @@ class EigenRecipe(ComposedRecipe):
 
     def gen_env(self, data):
         """Generates environments to be set"""
-        path = data['install_path']
+        yield CmakeModulePath(os.path.join(data['install_path'], 'share/eigen3/cmake/'))
 
-        yield Prepend('CMAKE_PREFIX_PATH', os.path.join(path, 'share/eigen3/cmake/'))

@@ -1,78 +1,74 @@
 import click
+import os
 
 from edpm.engine.api import EdpmApi
 from edpm.engine.commands import run
 from edpm.engine.output import markup_print as mprint
 
 
-_help_option_db = "Removes only DB record"
-_help_option_all = "Removes DB record and packet folder from disk"
-_help_option_auto = "Removes from DB and disk if(!) the packet is owned by edpm"
-
-
-# @click.group(invoke_without_command=True)
-@click.command()
-@click.argument('packet_name', nargs=1, metavar='<packet-name>')
-@click.argument('install_paths', nargs=-1, metavar='<path>')
+@click.command("clean", help="Remove installed data for a package from disk (if EDPM owns it).")
+@click.argument("dep_name", required=True)
 @click.pass_context
-def clean(ctx, packet_name, install_paths):
-    """Removes a packet.
-    By default deletes record from edpm DB and the disk folders if the packet is 'owned' by edpm.
-
-    Usage:
-        edpm rm <packet-name>         # removes active install of the packet
-        edpm rm <packet-name> <path>  # removes the install with the path
-
+def clean_command(ctx, dep_name):
     """
-    from edpm.engine.db import INSTALL_PATH, IS_OWNED, SOURCE_PATH, BUILD_PATH
-    ectx = ctx.obj
-    assert isinstance(ectx, EdpmApi)
+    Usage:
+        edpm clean <dep-name>
 
-    # We need DB ready for this cli command
-    ectx.ensure_db_exists()
+    This command removes the source/build/install directories from disk if they
+    exist and if EDPM owns the package. It also updates the lock file and regenerates
+    the environment scripts.
+    """
+    api = ctx.obj
+    assert isinstance(api, EdpmApi), "EdpmApi context not available."
 
-    # Check that the packet name is from known packets
-    ectx.ensure_installer_known(packet_name)
+    # Ensure plan & lock loaded
+    api.load_all()  # loads plan & lock files
 
-    if not install_paths:
-        install_data = ectx.db.get_active_install(packet_name)
-        if not install_data:
-            print("No active installation data found for the packet {}".format(packet_name))
-            raise click.Abort()
-        else:
-            print("No path provided. <b>Using 'active' install</b>")
-    else:
-        install_path = install_paths[0]     # todo multiple paths
-        install_data = ectx.db.get_install(packet_name, install_path)
-        if not install_data:
-            print("No active installation data found for the packet {} and path:\n{}"
-                  .format(packet_name, install_path))
-            raise click.Abort()
+    # Check if dependency is in the lock file
+    dep_data = api.lock.get_dependency(dep_name)
+    if not dep_data:
+        mprint("<red>Error:</red> No installation info found for '{}'. Not in lock file.", dep_name)
+        raise click.Abort()
 
-    mprint("<blue><b>Cleaning install with path: </b></blue>")
-    mprint("  {}\n", install_data[INSTALL_PATH])
+    # The typical key is "install_path". If it’s empty, presumably not installed.
+    install_path = dep_data.get("install_path", "")
+    if not install_path or not os.path.isdir(install_path):
+        mprint("<red>Error:</red> '{}' is not currently installed (lock file has no valid install_path).", dep_name)
+        raise click.Abort()
 
-    is_owned = install_data[IS_OWNED]
+    # If you store ownership as "owned": true/false in the lock, check it:
+    # (Or rename the key to 'is_owned' if your system differs.)
+    is_owned = dep_data.get("owned", True)  # default to True if absent
     if not is_owned:
-        mprint("<b>(!)</b> the packet is not 'owned' by edpm. Can't cleanup\n"
-               "<b>(!)</b>you have to cleanup it manually:\n{}\n", install_data[INSTALL_PATH])
+        mprint("<yellow>Note:</yellow> '{}' is not owned by EDPM. You must remove it manually:\n  {}",
+               dep_name, install_path)
         return
 
-    # Update environment scripts
-    mprint("Updating environment script files...\n")
-    ectx.save_default_bash_environ()
-    ectx.save_default_csh_environ()
+    # Print some info for user
+    mprint("<blue>Cleaning install of '{}' at:</blue>\n  {}", dep_name, install_path)
 
-    # remove the folder
+    # Remove the disk directories if listed in the lock
+    # Common fields might be "source_path", "build_path", "install_path"
+    removed_any = False
+    for path_key in ["source_path", "build_path", "install_path"]:
+        path_val = dep_data.get(path_key, "")
+        if path_val and os.path.isdir(path_val):
+            mprint("Removing <magenta>{}</magenta> ...", path_val)
+            run(f'rm -rf "{path_val}"')
+            removed_any = True
+        # Clear it in the lock data
+        dep_data[path_key] = ""
 
-    mprint("...trying to remove the folder from disk...\n")
+    if not removed_any:
+        mprint("No directories found on disk to remove (maybe partially cleaned already).")
 
-    if SOURCE_PATH in install_data:
-        run('rm -rf "{}"'.format(install_data[SOURCE_PATH]))
-        del install_data[SOURCE_PATH]
+    # Overwrite the lock data (removing the paths but still leaving the recipe config).
+    api.lock.update_dependency(dep_name, dep_data)
+    api.lock.save()
 
-    if BUILD_PATH in install_data:
-        run('rm -rf "{}"'.format(install_data[BUILD_PATH]))
-        del install_data[BUILD_PATH]
+    # Regenerate environment scripts for bash & csh
+    mprint("\nRebuilding environment scripts...\n")
+    api.save_shell_environment(shell="bash")
+    api.save_shell_environment(shell="csh")
 
-    ectx.db.save()
+    mprint("<green>Done!</green> '{}' has been cleaned.\n", dep_name)
