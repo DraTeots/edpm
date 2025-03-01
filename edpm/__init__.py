@@ -1,1 +1,1 @@
-from edpm.version import version, version_tuple
+from edpm.version import version, __version__, version_tuple

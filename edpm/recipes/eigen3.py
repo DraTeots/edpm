@@ -1,7 +1,6 @@
 """
 This file provides information of how to build and configure Eigen3 packet:
 https://gitlab.com/libeigen/eigen.git
-
 """
 
 import os

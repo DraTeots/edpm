@@ -112,13 +112,11 @@ class EdpmApi:
           - 'all'/'force': reinstall anyway
           - 'single': install exactly those requested, ignoring chain
         """
-        to_install = []
-        for dep_name in dep_names:
-            if mode == "missing":
-                if not self.lock.is_installed(dep_name):
-                    to_install.append(dep_name)
-            elif mode in ("all", "force", "single"):
-                to_install.append(dep_name)
+        to_install = [
+            dep_name
+            for dep_name in dep_names
+            if force or not self.lock.is_installed(dep_name)
+        ]
 
         if explain:
             if not to_install:

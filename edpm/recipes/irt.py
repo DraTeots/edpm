@@ -3,34 +3,31 @@ Indirect Ray Tracing code for EPIC event reconstruction
 https://github.com/eic/irt.git
 
 """
-
 import os
+import platform
 
-from edpm.engine.env_gen import Prepend, Set, Append
-from edpm.engine.git_cmake_recipe import GitCmakeRecipe
+from edpm.engine.env_gen import Prepend
+from edpm.engine.composed_recipe import ComposedRecipe
 
 
-class IrtRecipe(GitCmakeRecipe):
-    """Indirect Ray Tracing code for EPIC event reconstruction"""
+class IrtRecipe(ComposedRecipe):
+    """
+    Installs IRT (Imaging Reconstruction Toolkit) from Git + CMake.
+    """
+    def __init__(self, config):
+        self.default_config = {
+            'fetch': 'git',
+            'make': 'cmake',
+            'url': 'https://github.com/eic/irt.git',
+            'branch': 'v1.0.8'
+        }
+        super().__init__(name='irt', config=config)
 
-    def __init__(self):
-        super(IrtRecipe, self).__init__('irt')
-        self.config['branch'] = 'v1.0.6'
-        self.config['repo_address'] = 'https://github.com/eic/irt.git'
-
-    @staticmethod
-    def gen_env(data):
-        """Generates environments to be set"""
+    def gen_env(self, data):
         path = data['install_path']
 
         yield Prepend('CMAKE_PREFIX_PATH', os.path.join(path, 'lib', 'cmake', 'IRT'))
         yield Prepend('LD_LIBRARY_PATH', os.path.join(path, 'lib'))
-        
+        if platform.system() == 'Darwin':
+            yield Prepend('DYLD_LIBRARY_PATH', os.path.join(path, 'lib'))
 
-    #
-    # OS dependencies are a map of software packets installed by os maintainers
-    # The map should be in form:
-    # os_dependencies = { 'required': {'ubuntu': "space separated packet names", 'centos': "..."},
-    #                     'optional': {'ubuntu': "space separated packet names", 'centos': "..."}
-    # The idea behind is to generate easy to use instructions: 'sudo apt-get install ... ... ... '
-    os_dependencies = {}

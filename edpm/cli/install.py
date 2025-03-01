@@ -6,12 +6,7 @@ from edpm.engine.output import markup_print as mprint
 from edpm.engine.api import EdpmApi  # EdpmApi is your new-based approach
 
 @click.command()
-@click.option('--missing', 'dep_mode', flag_value='missing', default=True,
-              help="Installs only missing dependencies (default).")
-@click.option('--single', 'dep_mode', flag_value='single',
-              help="Installs only the specified package(s), ignoring whether they're installed.")
-@click.option('--all', 'dep_mode', flag_value='all',
-              help="Installs all dependencies from the plan, even if installed.")
+
 @click.option('--force', is_flag=True, default=False,
               help="Force rebuild/reinstall even if already installed.")
 @click.option('--top-dir', default="", help="Override or set top_dir in the lock file.")
@@ -19,7 +14,7 @@ from edpm.engine.api import EdpmApi  # EdpmApi is your new-based approach
               help="Print what would be installed but don't actually install.")
 @click.argument('names', nargs=-1)
 @click.pass_context
-def install(ctx, dep_mode, names, top_dir, just_explain, force):
+def install(ctx, names, top_dir, just_explain, force):
     """
     Installs packages (and their dependencies) from the plan, updating the lock file.
 
@@ -46,20 +41,18 @@ def install(ctx, dep_mode, names, top_dir, just_explain, force):
     else:
         # If user provided package names, let's auto-add them to the plan if not present
         # Then those become dep_names
-        dep_names = []
+        dep_names = names
         for pkg_name in names:
-            # If the package is missing in the plan, add it automatically
+            # Lets check if package is in plan
             if not edpm_api.plan.has_dependency(pkg_name):
                 mprint(f"<red>Error:</red> '{pkg_name}' is not in plan!")
                 mprint(f"Please add it to plan either by editing the file or by <blue>'edpm add'</blue> command")
                 exit(1)     # Does it normal to terminate like this?
 
-            dep_names.append(pkg_name)
 
     # 4) Actually run the install logic
     edpm_api.install_dependency_chain(
         dep_names=dep_names,
-        mode=dep_mode,
         explain=just_explain,
         force=force
     )

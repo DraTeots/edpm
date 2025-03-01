@@ -6,7 +6,7 @@
 # docker run --rm -it --init eicdev/eicrecon-ubuntu22-prereq:latest
 # docker run --rm -it --init -p8888:8888 eicdev/eicrecon-ubuntu22-prereq:latest
 
-FROM ubuntu:latest
+FROM ubuntu:24.04
 
 # Number of build threads
 ARG BUILD_THREADS=8
