@@ -44,9 +44,10 @@ def install(ctx, names, top_dir, just_explain, force):
         dep_names = names
         for pkg_name in names:
             # Lets check if package is in plan
-            if not edpm_api.plan.has_dependency(pkg_name):
+            if not edpm_api.plan.has_package(pkg_name):
                 mprint(f"<red>Error:</red> '{pkg_name}' is not in plan!")
-                mprint(f"Please add it to plan either by editing the file or by <blue>'edpm add'</blue> command")
+                mprint(f"Please add it to plan either by editing the file or by <blue>'edpm add'</blue> command:")
+                mprint(f"edpm add {pkg_name}")
                 exit(1)     # Does it normal to terminate like this?
 
 
@@ -60,5 +61,4 @@ def install(ctx, names, top_dir, just_explain, force):
     # 5) If not just_explain, optionally generate environment scripts
     if not just_explain:
         mprint("\nUpdating environment script files...\n")
-        edpm_api.save_shell_environment(shell="bash")
-        edpm_api.save_shell_environment(shell="csh")
+        edpm_api.save_generator_scripts()

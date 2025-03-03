@@ -1,7 +1,7 @@
 import os
 
 
-class EnvironmentManipulation(object):
+class GeneratorStep(object):
     def __init__(self, name, value):
         self.name = name
         self.value = value
@@ -25,11 +25,11 @@ class EnvironmentManipulation(object):
         return path in path_tokens
 
 
-class Append(EnvironmentManipulation):
+class EnvAppend(GeneratorStep):
     """Appends environment variables like PATH or LD_LIBRARY_PATH"""
 
     def __init__(self, name, value):
-        super(Append, self).__init__(name, value)
+        super(EnvAppend, self).__init__(name, value)
 
     def gen_bash(self):
         """Generates bash piece of code"""
@@ -64,11 +64,11 @@ class Append(EnvironmentManipulation):
             os.environ[self.name] = self.value
 
 
-class Prepend(EnvironmentManipulation):
+class EnvPrepend(GeneratorStep):
     """Prepends environment variables like PATH or LD_LIBRARY_PATH"""
 
     def __init__(self, name, value):
-        super(Prepend, self).__init__(name, value)
+        super(EnvPrepend, self).__init__(name, value)
 
     def gen_bash(self):
         """Generates bash piece of code"""
@@ -113,11 +113,11 @@ class Prepend(EnvironmentManipulation):
             os.environ[self.name] = self.value
 
 
-class Set(EnvironmentManipulation):
+class EnvSet(GeneratorStep):
     """Sets environment variables like PATH or LD_LIBRARY_PATH"""
 
     def __init__(self, name, value):
-        super(Set, self).__init__(name, value)
+        super(EnvSet, self).__init__(name, value)
 
     def gen_bash(self):
         """Generates bash piece of code"""
@@ -134,7 +134,7 @@ class Set(EnvironmentManipulation):
         os.environ[self.name] = self.value
 
 
-class RawText(EnvironmentManipulation):
+class EnvRawText(GeneratorStep):
     def __init__(self, sh_text, csh_text, python_env):
         """ Function allows to
 
@@ -143,7 +143,7 @@ class RawText(EnvironmentManipulation):
         :param python_env: The function that manipulates python environment right
         """
 
-        super(RawText, self).__init__('', '')
+        super(EnvRawText, self).__init__('', '')
         self.sh_text = sh_text
         self.csh_text = csh_text
         self.python_env = python_env
@@ -158,18 +158,18 @@ class RawText(EnvironmentManipulation):
 
     def update_python_env(self):
         """Sets environment internally for python"""
-        print("   update_env: RawText step will update env")
+        print("   update_env: EnvRawText step will update env")
         self.python_env()
 
 
-class Comment(EnvironmentManipulation):
+class EnvComment(GeneratorStep):
     def __init__(self, text):
         """
         Adds comment to generated script
 
         :param text: The comment text
         """
-        super(Comment, self).__init__('', '')
+        super(EnvComment, self).__init__('', '')
         self.text = text
 
     def gen_bash(self):
@@ -184,9 +184,9 @@ class Comment(EnvironmentManipulation):
         """Sets environment internally for python"""
         pass    # Just nothing to do!
 
-# edpm/engine/env_gen.py
+# edpm/engine/steps.py
 
-class CmakeSet(EnvironmentManipulation):
+class CmakeSet(GeneratorStep):
     """
     A CMake directive to set(VAR VALUE).
     We'll implement gen_cmake_line() to produce a line in EDPMConfig.cmake.
@@ -208,13 +208,13 @@ class CmakeSet(EnvironmentManipulation):
         return f'set({self.name} "{self.value}" CACHE PATH "Set by EDPM")'
 
 
-class CmakeModulePath(Prepend):
+class CmakePrefixPath(EnvPrepend):
     """
     A CMake directive to prepend a path to a semicolon-delimited variable
     (like CMAKE_PREFIX_PATH).
     """
     def __init__(self, path):
-        super().__init__("CMAKE_MODULE_PATH", path)
+        super().__init__("CMAKE_PREFIX_PATH", path)
 
 
     def gen_cmake_line(self):
@@ -224,13 +224,13 @@ class CmakeModulePath(Prepend):
         #
         # or you could do the "prepend" approach. Some folks prefer "APPEND" for everything,
         # but let's emulate the EDPM approach:
-        return f'if(NOT DEFINED CMAKE_MODULE_PATH)\n'\
-               f'   set(CMAKE_MODULE_PATH "")\n'\
+        return f'if(NOT DEFINED CMAKE_PREFIX_PATH)\n'\
+               f'   set(CMAKE_PREFIX_PATH "")\n'\
                f'endif()\n'\
-               f'list(INSERT CMAKE_MODULE_PATH 0 "{self.value}")'.strip()
+               f'list(INSERT CMAKE_PREFIX_PATH 0 "{self.value}")'.strip()
 
 
-class CmakeLine(EnvironmentManipulation):
+class CmakeLine(GeneratorStep):
     """
     Allows a raw line to be inserted into EDPMConfig.cmake, e.g.
     'find_package(Clhep REQUIRED)'

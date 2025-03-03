@@ -15,7 +15,7 @@ ARG BUILD_THREADS=8
 ARG VERSION_CERN_ROOT=v6-32-06
 ARG VERSION_ACTS=v37.4.0
 ARG VERSION_PODIO=v01-01
-ARG VERSION_JANA2=v2.3.3
+ARG VERSION_JANA2=v2.4.0
 
 ENV EIC_ROOT /eic
 ENV CONTAINER_ROOT /container
@@ -41,7 +41,7 @@ RUN apt-get update &&\
                        libgsl-dev qtwebengine5-dev nlohmann-json3-dev &&\
     apt-get clean && apt-get autoremove -y && rm -rf /var/lib/apt/lists/*
 
-# Set clang as default
+# EnvSet clang as default
 RUN update-alternatives --install /usr/bin/c++ c++ /usr/bin/clang++-18 60
 
 # Create a user 'tdisuser' with sudo privileges

@@ -8,7 +8,7 @@ discussion and is intended to give new developers a clear roadmap for implementi
 
 ## 1. **Purpose and Goals**
 
-1. **Manage external C++ (and optionally Python) dependencies** in a way that is:
+1. **Manage external C++ (and optionally Python) packages** in a way that is:
     - **Decoupled from CMake** (i.e., EDPM can fetch and build dependencies in a standalone manner, independent of any
       particular build system).
     - **Integrates with CMake** through generated configuration files (so that a user’s CMake project can easily locate
@@ -18,13 +18,13 @@ discussion and is intended to give new developers a clear roadmap for implementi
 
 2. **Support a Manifest(Plan) + Lock file design**, ensuring:
     - **Plan** - Manifest in edpm is called "Plan"
-    - **Plan file** (`plan.edpm.yaml`) describes *what* dependencies and configuration of *how* you want them built.
+    - **Plan file** (`plan.edpm.yaml`) describes *what* packages and configuration of *how* you want them built.
     - **Lock file** (`plan-lock.edpm.yaml`) records *where* they were installed and *exact configuration details* when it
       was installed, ensuring reproducibility.
 
 3. **Keep the dependency graph simple**:
     - EDPM **does not** attempt advanced resolution of version conflicts or deep transitive dependencies. Instead, each
-      user-labeled dependency is installed in a straightforward manner with minimal “chaining.”
+      user-labeled package is installed in a straightforward manner with minimal “chaining.”
     - If package A depends on package B, the user ensures that B is "above in the manifest", 
       i.e. installed (or references it) in a manner consistent with the user’s environment.
     - There is a helper methods to suggest which **external**, i.e. system or other packet managers dependencies 
@@ -39,7 +39,7 @@ Below is a conceptual overview of how EDPM v3 works:
 1. **Plan file**
     - A YAML file describing:
         - **Global** config (e.g., `cxx_standard`, `build_threads`) and global environment steps.
-        - A **list of dependencies**, each with:
+        - A **list of packages**, each with:
             - A **`recipe`** name (determines how to fetch/build — e.g., `GitCmakeRecipe`, `ManualRecipe`, etc.).
             - A `config` block with fields relevant to that recipe (e.g., `repo_address`, `branch`, etc.).
             - An `environment` block of environment actions that should be applied once the package is installed (used
@@ -68,7 +68,7 @@ Below is a conceptual overview of how EDPM v3 works:
 
 4. **Environment and CMake Integration**
     - **Environment scripts**: EDPM generates shell scripts (e.g., `env.sh` and `env.csh`) that contain all environment
-      updates from *all* installed packages. Sourcing them in the user’s shell makes all dependencies visible to other
+      updates from *all* installed packages. Sourcing them in the user’s shell makes all packages visible to other
       build systems.
     - **CMake configuration**: EDPM can  generate cmake preset file with the intended configuations. 
     - or equivalently load a single `EDPMConfig.cmake`. This bridging is especially helpful for purely CMake-based
@@ -77,10 +77,10 @@ Below is a conceptual overview of how EDPM v3 works:
 5. **Command-Line Interface (CLI)**
     - **`init`**: Creates a minimal `plan.edpm.yaml` if one doesn’t exist.
     - **`add`**: Adds a new dependency entry to the manifest.
-    - **`install`**: Installs dependencies (either all missing or specific ones).
+    - **`install`**: Installs packages (either all missing or specific ones).
     - **`env`**: Displays or regenerates the environment scripts.
     - **`info`**: Summarizes installed packages, possible CMake usage instructions, etc.
-    - **`config`**: Updates or displays configuration options for dependencies or global config.
+    - **`config`**: Updates or displays configuration options for packages or global config.
     - **`pwd`** / `set` / `rm` / `clean` etc.: Additional housekeeping commands for pointing EDPM to pre-existing
       installs or removing them.
 
@@ -93,8 +93,8 @@ Below is a conceptual overview of how EDPM v3 works:
    - The minimal plan file has only packet names to install
    - The full specification of the plan file is in the separate document. It has:
       1. **`global` block** for top-level build settings and environment changes.
-      2. **`dependencies` array** for listing each dependency or pre-installed package you want EDPM to manage or reference.
-      3. **`external-requirements`** for specifying any system-level or external dependencies (apt, pip, dnf, conan, etc.).
+      2. **`packages` array** for listing each dependency or pre-installed package you want EDPM to manage or reference.
+      3. **`requirements`** for specifying any system-level or external dependencies (apt, pip, dnf, conan, etc.).
       4. **Flexible environment instructions** that allow multiple `prepend`, `append`, or `set` actions, including the ability to reference placeholders like `"$install_dir"` or `"$location"`.
    - Load and save using `ruamel.yaml` to preserve user comments.
 
@@ -104,7 +104,7 @@ Below is a conceptual overview of how EDPM v3 works:
       {
         "file_version": 1,
         "top_dir": "/absolute/path/where/installed",
-        "dependencies": {
+        "packages": {
           "foo": {
             "install_path": "/where/it/was/actually/installed",
             "built_with_config": { ... }  # final merged config
@@ -138,7 +138,7 @@ Below is a conceptual overview of how EDPM v3 works:
       path is discovered from the lock file.
     - For non-CMake or in-process builds, EDPM sets environment variables (e.g., `export PATH=...`) before `make` or
       `configure`.
-    - In practice, the API merges known installed dependencies into the environment or CMake flags (depending on the
+    - In practice, the API merges known installed packages into the environment or CMake flags (depending on the
       recipe).
 
 ---
@@ -147,7 +147,7 @@ Below is a conceptual overview of how EDPM v3 works:
 
 1. **Initialization**
     - `edpm init` writes a minimal `plan.edpm.yaml` if none exists.
-    - For existing projects, the developer hand-edits or `edpm add`s dependencies.
+    - For existing projects, the developer hand-edits or `edpm add`s packages.
 
 2. **Install**
     1. EDPM reads the manifest and lock file.
@@ -164,7 +164,7 @@ Below is a conceptual overview of how EDPM v3 works:
 
 3. **Environment Generation**
     - `edpm env` or part of the `install` final step:
-        - Loads all installed dependencies from the lock file.
+        - Loads all installed packages from the lock file.
         - For each, calls `recipe.gen_env()` to gather environment actions.
         - Writes aggregated output to `env.sh` and `env.csh`.
         - Writes edpm cmake preset file.
@@ -280,7 +280,7 @@ A key enhancement is that **EDPM** can **merge** or **append** its generated out
 - **`env_bash_in` / `env_bash_out`**
    - If you specify `env_bash_in`, EDPM will read that file as a **template**. It looks for a marker line like
      ```bash
-     # {{{EDPM-CONTENT}}}
+     # {{{EDPM-GENERATOR-CONTENT}}}
      ```  
      If found, EDPM will inject the generated environment content in place of that marker.  
      If not found, EDPM appends the environment content to the end.
@@ -293,7 +293,7 @@ A key enhancement is that **EDPM** can **merge** or **append** its generated out
    - For a `.cmake` toolchain/config file.
    - If `cmake_toolchain_in` is set, EDPM will load it, look for the marker line:
      ```cmake
-     # {{{EDPM-CONTENT}}}
+     # {{{EDPM-GENERATOR-CONTENT}}}
      ```  
      If found, it replaces that line with EDPM’s auto-generated lines. If not found, EDPM appends.
    - Then writes the final result to `cmake_toolchain_out`.
@@ -323,5 +323,11 @@ global:
 When running `edpm env save`, EDPM merges the generated content with those input files (if present) and writes the results to the specified output files.
 
 **If any “_out” variable is empty or missing, EDPM does not save** that specific file (and may display a warning). If any “_in” variable is empty, EDPM simply **doesn’t** do the merging logic and either writes a brand-new file (if `_out` is set) or prints a warning.
+
+**Out files default location:** 
+
+1. wherever `xx_out` is in configs
+2. otherwise where --top-dir is pointing to
+3. otherwise current working directory
 
 ---

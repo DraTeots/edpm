@@ -38,7 +38,7 @@ fh = logging.FileHandler('build.log')
 # create console handler with a higher log level
 ch = logging.StreamHandler()
 
-# Set pathes and global variables
+# EnvSet pathes and global variables
 this_path = os.path.dirname(os.path.abspath(inspect.stack()[0][1]))
 
 # Number of CPU-s
@@ -236,7 +236,7 @@ def main():
     cwd = os.getcwd()
     parser = argparse.ArgumentParser()
     parser.add_argument("--no-cache", help="Use docker --no-cache flag during build", action="store_true")
-    parser.add_argument("--tag", help="Set version tag name. latest is set by default", default='dev')
+    parser.add_argument("--tag", help="EnvSet version tag name. latest is set by default", default='dev')
     parser.add_argument("--push", action="store_true", help="If true - push images if built successfully")
     parser.add_argument("--latest", action="store_true", help="If true - also tag this image as 'latest' tag")
     parser.add_argument("--log-to-file", action="store_true", help="Log to file instead of stdout")

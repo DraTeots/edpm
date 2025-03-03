@@ -59,7 +59,7 @@ dependencies:
   #     - set:
   #         EIGEN_HOME: "$location"
 
-  # external-requirements:
+  # require:
   #   apt: [ libeigen3-dev ]
 """
 

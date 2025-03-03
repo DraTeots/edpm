@@ -6,7 +6,7 @@ https://github.com/catchorg/Catch2
 import os
 import platform
 
-from edpm.engine.env_gen import Set, Append, Prepend
+from edpm.engine.generators.steps import EnvAppend
 from edpm.engine.composed_recipe import ComposedRecipe
 
 
@@ -28,7 +28,7 @@ class Catch2Recipe(ComposedRecipe):
         path = data['install_path']
 
         if platform.system() == 'Darwin':
-            yield Append('DYLD_LIBRARY_PATH', os.path.join(path, 'lib'))
+            yield EnvAppend('DYLD_LIBRARY_PATH', os.path.join(path, 'lib'))
 
-        yield Append('LD_LIBRARY_PATH', os.path.join(path, 'lib'))
-        yield Append('CMAKE_PREFIX_PATH', os.path.join(path, 'lib', 'cmake', 'Catch2'))
+        yield EnvAppend('LD_LIBRARY_PATH', os.path.join(path, 'lib'))
+        yield EnvAppend('CMAKE_PREFIX_PATH', os.path.join(path, 'lib', 'cmake', 'Catch2'))

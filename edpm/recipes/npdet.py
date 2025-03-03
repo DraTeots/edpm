@@ -5,7 +5,7 @@ https://eicweb.phy.anl.gov/EIC/NPDet.git
 import os
 import platform
 
-from edpm.engine.env_gen import Prepend
+from edpm.engine.generators.steps import EnvPrepend
 from edpm.engine.composed_recipe import ComposedRecipe
 
 
@@ -25,11 +25,11 @@ class NpDetRecipe(ComposedRecipe):
     def gen_env(self, data):
         path = data['install_path']
 
-        yield Prepend('LD_LIBRARY_PATH', os.path.join(path, 'lib'))
-        yield Prepend('PATH', os.path.join(path, 'bin'))
+        yield EnvPrepend('LD_LIBRARY_PATH', os.path.join(path, 'lib'))
+        yield EnvPrepend('PATH', os.path.join(path, 'bin'))
 
         if platform.system() == 'Darwin':
-            yield Prepend('DYLD_LIBRARY_PATH', os.path.join(path, 'lib'))
+            yield EnvPrepend('DYLD_LIBRARY_PATH', os.path.join(path, 'lib'))
 
     #
     # OS dependencies are a map of software packets installed by os maintainers

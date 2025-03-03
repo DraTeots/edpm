@@ -270,7 +270,7 @@ def merge_db(orig_db, import_db):
             copied_install = orig_db.update_install(name, import_install[INSTALL_PATH], import_install)
             copied_install[IS_OWNED] = False
 
-            # Set install active if we don't have an active install for this packet
+            # EnvSet install active if we don't have an active install for this packet
 #            copied_install[IS_ACTIVE] = no_prior_installs and import_install[IS_ACTIVE]
             # >oO debug pprint(copied_install)
 

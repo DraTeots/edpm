@@ -98,57 +98,5 @@ def env_save(ctx):
     """
 
     api = ctx.obj
-    plan = api.plan
-    cfg = plan.global_config_block().data.get("config", {})
 
-    env_gen = api.create_environment_generator()
-    cm_gen = api.create_cmake_generator()
-
-    plan_dir = os.path.dirname(os.path.abspath(api.plan_file))
-
-    # Helper to interpret a pair of config keys for "in" and "out"
-    def interpret_in_out(key_in, key_out, default_outname):
-        """
-        Return (inPath, outPath) or (None, None) if we skip.
-         - If either is "" => skip with warning
-         - If in is None => no merging
-         - If out is None => fallback to planDir/default_outname
-        """
-        vin = cfg.get(key_in, None)
-        vout = cfg.get(key_out, None)
-
-        # Check empties
-        if vin == "":
-            click.echo(f"Warning: config {key_in} is empty => skipping.")
-            return (None, None)
-        if vout == "":
-            click.echo(f"Warning: config {key_out} is empty => skipping.")
-            return (None, None)
-
-        if vout is None:
-            # fallback to planDir
-            vout = os.path.join(plan_dir, default_outname)
-
-        return (vin, vout)
-
-    # 1) BASH
-    bash_in, bash_out = interpret_in_out("env_bash_in", "env_bash_out", "env.sh")
-    if bash_out is not None:
-        env_gen.save_environment_with_infile(shell="bash", in_file=bash_in, out_file=bash_out)
-
-    # 2) CSH
-    csh_in, csh_out = interpret_in_out("env_csh_in", "env_csh_out", "env.csh")
-    if csh_out is not None:
-        env_gen.save_environment_with_infile(shell="csh", in_file=csh_in, out_file=csh_out)
-
-    # 3) Toolchain
-    t_in, t_out = interpret_in_out("cmake_toolchain_in", "cmake_toolchain_out", "EDPMToolchain.cmake")
-    if t_out is not None:
-        cm_gen.save_toolchain_with_infile(in_file=t_in, out_file=t_out)
-
-    # 4) Presets
-    p_in, p_out = interpret_in_out("cmake_presets_in", "cmake_presets_out", "CMakePresets.json")
-    if p_out is not None:
-        cm_gen.save_presets_with_infile(in_file=p_in, out_file=p_out)
-
-    click.echo("Done saving environment & CMake integration files.")
+    api.save_generator_scripts()

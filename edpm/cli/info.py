@@ -23,9 +23,9 @@ def info(ctx, flag_cmake):
 
     # Show installed packages
     installed = []
-    for dep_name in ectx.lock.get_all_dependencies():
+    for dep_name in ectx.lock.get_installed_packages():
         if ectx.lock.is_installed(dep_name):
-            dep_data = ectx.lock.get_dependency(dep_name)
+            dep_data = ectx.lock.get_installed_package(dep_name)
             ipath = dep_data.get("install_path")
             installed.append((dep_name, ipath))
 

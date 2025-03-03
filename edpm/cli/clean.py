@@ -1,5 +1,6 @@
 import click
 import os
+import shutil
 
 from edpm.engine.api import EdpmApi
 from edpm.engine.commands import run
@@ -10,65 +11,60 @@ from edpm.engine.output import markup_print as mprint
 @click.argument("dep_name", required=True)
 @click.pass_context
 def clean_command(ctx, dep_name):
-    """
-    Usage:
-        edpm clean <dep-name>
-
-    This command removes the source/build/install directories from disk if they
-    exist and if EDPM owns the package. It also updates the lock file and regenerates
-    the environment scripts.
-    """
+    """Removes package installation and updates lock file"""
     api = ctx.obj
     assert isinstance(api, EdpmApi), "EdpmApi context not available."
+    api.load_all()  # Ensure plan & lock are loaded
 
-    # Ensure plan & lock loaded
-    api.load_all()  # loads plan & lock files
-
-    # Check if dependency is in the lock file
-    dep_data = api.lock.get_dependency(dep_name)
+    # Get dependency data from lock file
+    dep_data = api.lock.get_installed_package(dep_name)
     if not dep_data:
         mprint("<red>Error:</red> No installation info found for '{}'. Not in lock file.", dep_name)
         raise click.Abort()
 
-    # The typical key is "install_path". If it’s empty, presumably not installed.
+    # Get installation metadata
     install_path = dep_data.get("install_path", "")
+    config = dep_data.get("built_with_config", {})
+    is_owned = dep_data.get("owned", True)
+
+    # Validate installation exists
     if not install_path or not os.path.isdir(install_path):
-        mprint("<red>Error:</red> '{}' is not currently installed (lock file has no valid install_path).", dep_name)
+        mprint("<red>Error:</red> '{}' is not currently installed.", dep_name)
         raise click.Abort()
 
-    # If you store ownership as "owned": true/false in the lock, check it:
-    # (Or rename the key to 'is_owned' if your system differs.)
-    is_owned = dep_data.get("owned", True)  # default to True if absent
+    # Check ownership
     if not is_owned:
-        mprint("<yellow>Note:</yellow> '{}' is not owned by EDPM. You must remove it manually:\n  {}",
-               dep_name, install_path)
+        mprint("<yellow>Note:</yellow> '{}' is not owned by EDPM. Remove manually:\n  {}", dep_name, install_path)
         return
 
-    # Print some info for user
-    mprint("<blue>Cleaning install of '{}' at:</blue>\n  {}", dep_name, install_path)
+    # Cleanup directories
+    dirs_to_remove = [
+        config.get("source_path", ""),
+        config.get("build_path", ""),
+        install_path
+    ]
 
-    # Remove the disk directories if listed in the lock
-    # Common fields might be "source_path", "build_path", "install_path"
-    removed_any = False
-    for path_key in ["source_path", "build_path", "install_path"]:
-        path_val = dep_data.get(path_key, "")
-        if path_val and os.path.isdir(path_val):
-            mprint("Removing <magenta>{}</magenta> ...", path_val)
-            run(f'rm -rf "{path_val}"')
-            removed_any = True
-        # Clear it in the lock data
-        dep_data[path_key] = ""
+    removed = False
+    for path in filter(None, dirs_to_remove):
+        if os.path.exists(path):
+            mprint("Removing <magenta>{}</magenta>...", path)
+            shutil.rmtree(path, ignore_errors=True)
+            removed = True
 
-    if not removed_any:
-        mprint("No directories found on disk to remove (maybe partially cleaned already).")
+    if not removed:
+        mprint("No installation directories found for '{}'", dep_name)
+        return
 
-    # Overwrite the lock data (removing the paths but still leaving the recipe config).
-    api.lock.update_dependency(dep_name, dep_data)
+    # Update lock file
+    api.lock.update_package(dep_name, {
+        "install_path": "",
+        "built_with_config": {}
+    })
     api.lock.save()
 
-    # Regenerate environment scripts for bash & csh
-    mprint("\nRebuilding environment scripts...\n")
+    # Regenerate environment
+    mprint("\nRebuilding environment scripts...")
     api.save_shell_environment(shell="bash")
     api.save_shell_environment(shell="csh")
 
-    mprint("<green>Done!</green> '{}' has been cleaned.\n", dep_name)
+    mprint("<green>Success:</green> Cleaned '{}' installation", dep_name)

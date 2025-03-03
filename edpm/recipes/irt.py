@@ -6,7 +6,7 @@ https://github.com/eic/irt.git
 import os
 import platform
 
-from edpm.engine.env_gen import Prepend
+from edpm.engine.generators.steps import EnvPrepend
 from edpm.engine.composed_recipe import ComposedRecipe
 
 
@@ -26,8 +26,8 @@ class IrtRecipe(ComposedRecipe):
     def gen_env(self, data):
         path = data['install_path']
 
-        yield Prepend('CMAKE_PREFIX_PATH', os.path.join(path, 'lib', 'cmake', 'IRT'))
-        yield Prepend('LD_LIBRARY_PATH', os.path.join(path, 'lib'))
+        yield EnvPrepend('CMAKE_PREFIX_PATH', os.path.join(path, 'lib', 'cmake', 'IRT'))
+        yield EnvPrepend('LD_LIBRARY_PATH', os.path.join(path, 'lib'))
         if platform.system() == 'Darwin':
-            yield Prepend('DYLD_LIBRARY_PATH', os.path.join(path, 'lib'))
+            yield EnvPrepend('DYLD_LIBRARY_PATH', os.path.join(path, 'lib'))
 

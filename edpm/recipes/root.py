@@ -10,7 +10,7 @@ from distutils.dir_util import mkpath
 from subprocess import check_output
 
 from edpm.engine.composed_recipe import ComposedRecipe
-from edpm.engine.env_gen import Set, Prepend, Append, RawText
+from edpm.engine.generators.steps import EnvSet, EnvPrepend, EnvRawText
 from edpm.engine.commands import is_not_empty_dir
 
 ROOTSYS = "ROOTSYS"
@@ -184,7 +184,7 @@ class RootRecipe(ComposedRecipe):
         bin_path = os.path.join(install_path, 'bin')
         lib_path = os.path.join(install_path, 'lib')
         cmake_path = os.path.join(install_path, 'cmake')
-        yield Prepend('CMAKE_PREFIX_PATH', cmake_path)
+        yield EnvPrepend('CMAKE_PREFIX_PATH', cmake_path)
 
         # We'll skip calling 'thisroot' if conda is found
         is_under_conda = os.environ.get('ROOT_INSTALLED_BY_CONDA', False)
@@ -195,18 +195,18 @@ class RootRecipe(ComposedRecipe):
             We set environment variables like PATH, LD_LIBRARY_PATH, etc.
             """
             # You can replicate old logic
-            yield Set('ROOTSYS', install_path)
-            yield Prepend('PATH', bin_path)
-            yield Prepend('LD_LIBRARY_PATH', lib_path)
+            yield EnvSet('ROOTSYS', install_path)
+            yield EnvPrepend('PATH', bin_path)
+            yield EnvPrepend('LD_LIBRARY_PATH', lib_path)
             if platform.system() == 'Darwin':
-                yield Prepend('DYLD_LIBRARY_PATH', lib_path)
+                yield EnvPrepend('DYLD_LIBRARY_PATH', lib_path)
             # Put the .so python modules into PYTHONPATH
-            yield Prepend('PYTHONPATH', lib_path)
+            yield EnvPrepend('PYTHONPATH', lib_path)
             # Possibly also add a jupyter path
             jup_path = os.path.join(install_path, 'etc', 'notebook')
-            yield Prepend('JUPYTER_PATH', jup_path)
-            # Prepend overall prefix
-            yield Prepend('CMAKE_PREFIX_PATH', install_path)
+            yield EnvPrepend('JUPYTER_PATH', jup_path)
+            # EnvPrepend overall prefix
+            yield EnvPrepend('CMAKE_PREFIX_PATH', install_path)
 
         # Build the scripts to source
         bash_thisroot = os.path.join(bin_path, 'thisroot.sh')
@@ -234,7 +234,7 @@ class RootRecipe(ComposedRecipe):
             for action in update_python_environment():
                 action.update_python_env()
 
-        yield RawText(bash_text, csh_text, python_env_updater)
+        yield EnvRawText(bash_text, csh_text, python_env_updater)
 
 
 # Optional utility function from old code if you want it:

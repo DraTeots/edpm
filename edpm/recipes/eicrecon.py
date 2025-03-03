@@ -4,9 +4,8 @@ https://gitlab.com/eic/eicrecon
 
 """
 import os
-import platform
 
-from edpm.engine.env_gen import Set, Append, Prepend
+from edpm.engine.generators.steps import EnvSet, EnvPrepend
 from edpm.engine.composed_recipe import ComposedRecipe
 
 
@@ -28,12 +27,12 @@ class EicreconRecipe(ComposedRecipe):
         lib_path = os.path.join(path, 'lib')
         lib64_path = os.path.join(path, 'lib64')
 
-        yield Set('eicrecon_HOME', path)
+        yield EnvSet('eicrecon_HOME', path)
 
-        yield Prepend('JANA_PLUGIN_PATH', os.path.join(path, 'lib', 'EICrecon', 'plugins'))
-        yield Prepend('PATH', os.path.join(path, 'bin'))
+        yield EnvPrepend('JANA_PLUGIN_PATH', os.path.join(path, 'lib', 'EICrecon', 'plugins'))
+        yield EnvPrepend('PATH', os.path.join(path, 'bin'))
 
         if os.path.isdir(lib64_path):
-            yield Prepend('LD_LIBRARY_PATH', lib64_path)
-        yield Prepend('LD_LIBRARY_PATH', lib_path)
+            yield EnvPrepend('LD_LIBRARY_PATH', lib64_path)
+        yield EnvPrepend('LD_LIBRARY_PATH', lib_path)
 

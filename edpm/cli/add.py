@@ -53,7 +53,7 @@ def add(ctx, recipe_type, branch, location, repo, option_list, name, extra_args)
     #    We'll check if "root" is recognized by the manager as a known recipe.
     if not recipe_type:
         # If 'name' is recognized as a known recipe name:
-        known = api.pm.recipes_by_name.keys()
+        known = api.recipe_manager.recipes_by_name.keys()
         if name in known:
             recipe_type = name
         else:
@@ -70,7 +70,7 @@ def add(ctx, recipe_type, branch, location, repo, option_list, name, extra_args)
         "name": name,
         "config": {},
         "environment": [],
-        "external-requirements": {}
+        "require": {}
     }
 
     # 4) Map positional arguments if any
@@ -102,12 +102,12 @@ def add(ctx, recipe_type, branch, location, repo, option_list, name, extra_args)
             mprint("<red>Ignoring malformed --option '{}'. Expected key=value.</red>", opt)
 
     # 7) Check if name already exists in the plan
-    if api.plan.has_dependency(name):
+    if api.plan.has_package(name):
         mprint("<red>Error:</red> A dependency named '{}' already exists in the plan.", name)
         return
 
     # 8) Actually add it to the plan
-    api.plan.data["dependencies"].append(new_dep)
+    api.plan.data["packages"].append(new_dep)
 
     # 9) Save the plan
     api.plan.save(api.plan_file)

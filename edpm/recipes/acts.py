@@ -4,9 +4,8 @@ https://gitlab.cern.ch/acts/acts-core
 """
 
 import os
-import platform
 
-from edpm.engine.env_gen import Set, Append, Prepend
+from edpm.engine.generators.steps import EnvSet, EnvAppend
 from edpm.engine.composed_recipe import ComposedRecipe
 
 
@@ -31,7 +30,7 @@ class ActsRecipe(ComposedRecipe):
         """Generates environments to be set"""
         path = data['install_path']
 
-        yield Set('ACTS_DIR', path)
+        yield EnvSet('ACTS_DIR', path)
 
         # it could be lib or lib64. There are bugs on different platforms (RHEL&centos and WSL included)
         # https://stackoverflow.com/questions/46847939/config-site-for-vendor-libs-on-centos-x86-64
@@ -39,11 +38,11 @@ class ActsRecipe(ComposedRecipe):
 
         import platform
         if platform.system() == 'Darwin':
-            yield Append('DYLD_LIBRARY_PATH', os.path.join(path, 'lib'))
+            yield EnvAppend('DYLD_LIBRARY_PATH', os.path.join(path, 'lib'))
 
-        yield Append('LD_LIBRARY_PATH', os.path.join(path, 'lib'))
+        yield EnvAppend('LD_LIBRARY_PATH', os.path.join(path, 'lib'))
 
         # share/cmake/Acts
-        yield Append('CMAKE_PREFIX_PATH', os.path.join(path, 'lib', 'cmake', 'Acts'))
-        yield Append('CMAKE_PREFIX_PATH', os.path.join(path, 'lib', 'cmake', 'nlohmann_json'))
-        yield Append('CMAKE_PREFIX_PATH', os.path.join(path, 'lib', 'cmake', 'ActsDD4hep'))
+        yield EnvAppend('CMAKE_PREFIX_PATH', os.path.join(path, 'lib', 'cmake', 'Acts'))
+        yield EnvAppend('CMAKE_PREFIX_PATH', os.path.join(path, 'lib', 'cmake', 'nlohmann_json'))
+        yield EnvAppend('CMAKE_PREFIX_PATH', os.path.join(path, 'lib', 'cmake', 'ActsDD4hep'))

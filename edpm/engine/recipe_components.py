@@ -45,7 +45,7 @@ class GitFetcher(IFetcher):
 
     def preconfigure(self):
         """
-        Set up config['clone_command'] if not already provided.
+        EnvSet up config['clone_command'] if not already provided.
         For example, set shallow clone if branch != (master|main).
         """
         # If user doesn't specify 'git_clone_depth', pick default
@@ -222,24 +222,33 @@ class CmakeMaker(IMaker):
         cmake_flags = self.config.get("cmake_flags", "")
         cmake_user_flags = self.config.get("cmake_user_flags", "")
         # Compose a single line. This is up to your usage style:
-        self.config["build_cmd"] = (
+        self.config["configure_cmd"] = (
             f"cmake -B {self.config['build_path']} -DCMAKE_INSTALL_PREFIX={self.config['install_path']} "
             f"-DCMAKE_CXX_STANDARD={cxx_std} "
             f"-DCMAKE_BUILD_TYPE={self.config['cmake_build_type']} "
             f"{cmake_flags} {cmake_user_flags}"
             f"{self.config['source_path']} "
-            f"&& cmake --build . -- -j {build_threads} "
-            f"&& cmake --build . --target install"
         )
+        self.config["build_cmd"] = f"cmake --build {self.config['build_path']} -- -j {build_threads}"
+        self.config["install_cmd"] = f"cmake --build {self.config['build_path']} --target install"
 
     def build(self):
         build_path = self.config["build_path"]
         run(f'mkdir -p "{build_path}"')
         # We run the build_cmd in that directory
+        configure_cmd = self.config.get("configure_cmd", "")
         build_cmd = self.config.get("build_cmd", "")
-        if not build_cmd:
+        install_cmd = self.config.get("install_cmd", "")
+        if not configure_cmd:
             raise ValueError("[CmakeMaker] build_cmd is empty. Did you call preconfigure?")
-        run(build_cmd, env_file="env.sh")  # example: we might source env.sh
+
+        env_file_bash = self.config["env_file_bash"]
+        if not os.path.isfile(env_file_bash):
+            raise FileNotFoundError(f"[CmakeMaker] Env file does not exist: {env_file_bash}")
+
+        run(configure_cmd, env_file=env_file_bash)
+        run(build_cmd, env_file=env_file_bash)
+        run(install_cmd, env_file=env_file_bash)
 
     def install(self):
         # Actually, we already do `make install` in build_cmd above.

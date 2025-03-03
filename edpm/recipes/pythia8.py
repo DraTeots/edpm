@@ -8,7 +8,7 @@ import os
 import sysconfig
 
 from edpm.engine.db import INSTALL_PATH
-from edpm.engine.env_gen import Set, Prepend
+from edpm.engine.generators.steps import EnvSet, EnvPrepend
 from edpm.engine.recipe import Recipe
 from edpm.engine.commands import run, env, workdir
 
@@ -131,10 +131,10 @@ class Pythia8(Recipe):
     @staticmethod
     def gen_env(data):
         install_path = data['install_path']
-        yield Set('PYTHIA8_ROOT_DIR', install_path)
-        yield Set('PYTHIA8_DIR', install_path)  # For Delphes
-        yield Prepend('PATH', os.path.join(install_path, 'bin'))
-        yield Prepend('LD_LIBRARY_PATH', os.path.join(install_path, 'lib'))
+        yield EnvSet('PYTHIA8_ROOT_DIR', install_path)
+        yield EnvSet('PYTHIA8_DIR', install_path)  # For Delphes
+        yield EnvPrepend('PATH', os.path.join(install_path, 'bin'))
+        yield EnvPrepend('LD_LIBRARY_PATH', os.path.join(install_path, 'lib'))
 
     #
     # OS dependencies are a map of software packets installed by os maintainers

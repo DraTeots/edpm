@@ -53,7 +53,7 @@ dependencies:
 
     # Example external requirements (like if this package also needs some OS-level packages).
     # The user can run `edpm req apt` or `edpm req pip` to see these.
-  external-requirements:
+  require:
     apt:
     - libx11-dev
     - libssl-dev
@@ -82,7 +82,7 @@ dependencies:
 
     # Additional external requirements. We’re not enumerating all possible keys,
     # just apt/pip as an example:
-  external-requirements:
+  require:
     apt:
     - libmylib-dev
     pip:
@@ -107,7 +107,7 @@ dependencies:
   - append:
       LD_LIBRARY_PATH: $install_dir/addons/lib
 
-  external-requirements:
+  require:
     apt:
     - libextra-dev
     conan:
@@ -128,7 +128,7 @@ dependencies:
   - set:
       EIGEN_HOME: $location
 
-  external-requirements:
+  require:
       # For demonstration, we might declare a dnf or apt requirement
     apt:
     - libeigen3-dev
@@ -145,7 +145,7 @@ dependencies:
   environment:
   - append:
       PYTHONPATH: $install_dir/site-packages
-  external-requirements:
+  require:
       # Possibly if this pip tool also needs system-level libs
     apt: [libsome-dev]
     pip: [requests, Click>=8.0]
@@ -154,4 +154,4 @@ dependencies:
   name: root
   config: {}
   environment: []
-  external-requirements: {}
+  require: {}

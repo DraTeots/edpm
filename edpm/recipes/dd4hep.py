@@ -6,7 +6,7 @@ https://github.com/AIDASoft/DD4hep
 import os
 import platform
 
-from edpm.engine.env_gen import Set, Append, Prepend, RawText
+from edpm.engine.generators.steps import EnvSet, EnvAppend, EnvPrepend, EnvRawText
 from edpm.engine.composed_recipe import ComposedRecipe
 
 
@@ -30,19 +30,19 @@ class DD4HepRecipe(ComposedRecipe):
         include_path = os.path.join(path, 'include')
         cmake_path = os.path.join(path, 'cmake')
 
-        # Prepend PATH for dd4hep executables
-        yield Prepend('PATH', bin_path)
+        # EnvPrepend PATH for dd4hep executables
+        yield EnvPrepend('PATH', bin_path)
 
         # Typical dynamic library environment
-        yield Append('LD_LIBRARY_PATH', lib_path)
+        yield EnvAppend('LD_LIBRARY_PATH', lib_path)
         if platform.system() == 'Darwin':
-            yield Append('DYLD_LIBRARY_PATH', lib_path)
+            yield EnvAppend('DYLD_LIBRARY_PATH', lib_path)
 
         # CMake detection
-        yield Append('CMAKE_PREFIX_PATH', cmake_path)
+        yield EnvAppend('CMAKE_PREFIX_PATH', cmake_path)
 
         # Root cling might want to find these headers
-        yield Append('ROOT_INCLUDE_PATH', include_path)
+        yield EnvAppend('ROOT_INCLUDE_PATH', include_path)
 
         # Optionally source the 'thisdd4hep_only.sh' if it exists
         bash_thisdd4hep_path = os.path.join(bin_path, 'thisdd4hep_only.sh')
@@ -56,8 +56,8 @@ class DD4HepRecipe(ComposedRecipe):
             f'    source "{bash_thisdd4hep_path}"\n'
             f'endif\n'
         )
-        yield RawText(bash_text, csh_text, None)
+        yield EnvRawText(bash_text, csh_text, None)
 
         # Also define DD4HEP_DIR
-        yield Set('DD4HEP_DIR', path)
+        yield EnvSet('DD4HEP_DIR', path)
 

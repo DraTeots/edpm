@@ -5,7 +5,7 @@ https://github.com/acts-project/actsvg.git
 import os
 import platform
 
-from edpm.engine.env_gen import Append, Set, Prepend
+from edpm.engine.generators.steps import EnvAppend
 from edpm.engine.composed_recipe import ComposedRecipe
 
 
@@ -26,9 +26,9 @@ class ActsSvgRecipe(ComposedRecipe):
         path = data['install_path']
 
         if platform.system() == 'Darwin':
-            yield Append('DYLD_LIBRARY_PATH', os.path.join(path, 'lib'))
+            yield EnvAppend('DYLD_LIBRARY_PATH', os.path.join(path, 'lib'))
 
-        yield Append('LD_LIBRARY_PATH', os.path.join(path, 'lib'))
+        yield EnvAppend('LD_LIBRARY_PATH', os.path.join(path, 'lib'))
         # Example usage: cmake config location might be named differently:
-        yield Append('CMAKE_PREFIX_PATH', os.path.join(path, 'lib', 'cmake', 'actsvg-0.1'))
+        yield EnvAppend('CMAKE_PREFIX_PATH', os.path.join(path, 'lib', 'cmake', 'actsvg-0.1'))
 

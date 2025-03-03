@@ -3,9 +3,10 @@
 import os
 
 class EnvironmentGenerator:
-    def __init__(self, plan, lock):
+    def __init__(self, plan, lock, recipe_manager):
         self.plan = plan
         self.lock = lock
+        self.recipe_manager = recipe_manager
 
     def build_env_text(self, shell="bash") -> str:
         """
@@ -31,19 +32,37 @@ class EnvironmentGenerator:
                 lines.append(act.gen_csh() + "\n")
 
         # 2) Per dependency
-        all_deps = self.lock.get_all_dependencies()
-        for dep_name in sorted(all_deps):
-            dep_data = self.lock.get_dependency(dep_name)
-            ipath = dep_data.get("install_path", "")
-            if not ipath or not os.path.isdir(ipath):
+        package_names = self.lock.get_installed_packages()
+        for package_name in sorted(package_names):
+            dep_data = self.lock.get_installed_package(package_name)
+            env_actions = []
+
+            # Get environment from recipe's gen_env
+            recipe_cls = self.recipe_manager.recipes_by_name.get(package_name)
+            if recipe_cls:
+                recipe_env_actions = list(recipe_cls.gen_env(dep_data))
+                env_actions.extend(recipe_env_actions)
+
+            install_path = dep_data.get("install_path", "")
+            if not install_path or not os.path.isdir(install_path):
                 continue
-            dep_obj = self.plan.find_dependency(dep_name)
+            dep_obj = self.plan.find_package(package_name)
             if not dep_obj:
                 continue
 
-            lines.append(f"\n# ----- ENV for {dep_name} -----\n")
-            placeholders = {"install_dir": ipath}
-            env_actions = dep_obj.env_block().parse(placeholders)
+            # Get environment from plan's environment block
+            placeholders = {
+                "install_path": install_path,
+                "name": package_name,
+                # Add other placeholders as needed
+            }
+            plan_env_actions = dep_obj.env_block().parse(placeholders)
+            env_actions.extend(plan_env_actions)
+
+
+            lines.append(f"\n# ----- ENV for {package_name} -----\n")
+            placeholders = {"install_path": install_path}
+            env_actions.extend(dep_obj.env_block().parse(placeholders))
             for act in env_actions:
                 if shell == "bash":
                     lines.append(act.gen_bash() + "\n")
@@ -56,7 +75,7 @@ class EnvironmentGenerator:
         """
         1. Build the EDPM environment content
         2. If in_file is None => write EDPM content directly to out_file
-        3. Else read in_file, look for marker "# {{{EDPM-CONTENT}}}", and place EDPM content there (or append).
+        3. Else read in_file, look for marker "{{{EDPM-GENERATOR-CONTENT}}}", and place EDPM content there (or append).
         4. Write the merged result to out_file
         """
         edpm_content = self.build_env_text(shell)
@@ -69,11 +88,11 @@ class EnvironmentGenerator:
         with open(in_file, "r", encoding="utf-8") as f:
             original_lines = f.readlines()
 
-        marker = "# {{{EDPM-CONTENT}}}"
+        marker = "{{{EDPM-GENERATOR-CONTENT}}}"
         inserted = False
         new_lines = []
         for line in original_lines:
-            if marker in line:
+            if marker in line.strip():
                 new_lines.append(edpm_content)
                 inserted = True
                 # we can keep or discard the marker line. Let's discard it:

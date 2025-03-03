@@ -94,7 +94,7 @@ RUN echo '#!/bin/bash' > /entrypoint.sh && \
 # Make the entrypoint script executable
 RUN chmod +x /entrypoint.sh
 
-# Set the entrypoint script as the ENTRYPOINT
+# EnvSet the entrypoint script as the ENTRYPOINT
 ENTRYPOINT ["/bin/bash", "/entrypoint.sh"]
 USER eicuser
 

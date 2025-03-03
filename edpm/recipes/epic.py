@@ -2,9 +2,8 @@
 EPIC DD4Hep geometry repository
 """
 import os
-import platform
 
-from edpm.engine.env_gen import Set, Append, Prepend
+from edpm.engine.generators.steps import EnvSet, EnvPrepend
 from edpm.engine.composed_recipe import ComposedRecipe
 
 
@@ -24,11 +23,11 @@ class EpicRecipe(ComposedRecipe):
     def gen_env(self, data):
         path = data['install_path']
 
-        yield Prepend('LD_LIBRARY_PATH', os.path.join(path, 'lib'))
-        yield Prepend('PATH', os.path.join(path, 'bin'))
+        yield EnvPrepend('LD_LIBRARY_PATH', os.path.join(path, 'lib'))
+        yield EnvPrepend('PATH', os.path.join(path, 'bin'))
 
-        yield Set('DETECTOR_PATH', os.path.join(path, 'share', 'epic'))
-        yield Set('BEAMLINE', 'epic')
-        yield Set('BEAMLINE_PATH', os.path.join(path, 'share', 'epic'))
-        yield Set('BEAMLINE_CONFIG', 'epic')
+        yield EnvSet('DETECTOR_PATH', os.path.join(path, 'share', 'epic'))
+        yield EnvSet('BEAMLINE', 'epic')
+        yield EnvSet('BEAMLINE_PATH', os.path.join(path, 'share', 'epic'))
+        yield EnvSet('BEAMLINE_CONFIG', 'epic')
 

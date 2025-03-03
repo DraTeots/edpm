@@ -1,10 +1,14 @@
 file_version: 1
 top_dir: /mnt/e/data/edpm
-dependencies:
+packages:
   eigen3:
     install_path: /mnt/e/data/edpm/eigen3/eigen3-install
     built_with_config:
-      env_file_bash: /mnt/e/dev/edpm/tests/env.sh
+      env_bash_out: /mnt/e/dev/edpm/tests/tmp/env.sh
+      env_csh_out: /mnt/e/dev/edpm/tests/tmp/env.csh
+      cmake_toolchain_out: /mnt/e/dev/edpm/tests/tmp/CmakeToolchain.cmake
+      cmake_presets_out: /mnt/e/dev/edpm/tests/tmp/Edpm.presets.json
+      env_file_bash: /mnt/e/dev/edpm/tests/tmp/env.sh
       app_path: /mnt/e/data/edpm/eigen3
       fetch: git
       make: cmake
@@ -19,6 +23,7 @@ dependencies:
       git_clone_depth: --depth 1
       clone_command: git clone --depth 1 -b 3.4.0 https://gitlab.com/libeigen/eigen.git
         /mnt/e/data/edpm/eigen3/src
-      build_cmd: cmake -DCMAKE_INSTALL_PREFIX=/mnt/e/data/edpm/eigen3/eigen3-install
-        -DCMAKE_CXX_STANDARD=17 -DCMAKE_BUILD_TYPE=RelWithDebInfo  /mnt/e/data/edpm/eigen3/src
-        && cmake --build . -- -j 4 && cmake --build . --target install
+      configure_cmd: 'cmake -B /mnt/e/data/edpm/eigen3/build -DCMAKE_INSTALL_PREFIX=/mnt/e/data/edpm/eigen3/eigen3-install
+        -DCMAKE_CXX_STANDARD=17 -DCMAKE_BUILD_TYPE=RelWithDebInfo  /mnt/e/data/edpm/eigen3/src '
+      build_cmd: cmake --build /mnt/e/data/edpm/eigen3/build -- -j 4
+      install_cmd: cmake --build /mnt/e/data/edpm/eigen3/build --target install

@@ -4,10 +4,9 @@ https://github.com/JeffersonLab/JANA4ML4FPGA
 
 """
 import os
-import platform
 
 from edpm.engine.composed_recipe import ComposedRecipe
-from edpm.engine.env_gen import Set, Prepend, Append, RawText
+from edpm.engine.generators.steps import EnvSet, EnvPrepend
 from edpm.engine.commands import is_not_empty_dir
 from distutils.dir_util import mkpath
 
@@ -104,16 +103,16 @@ class Jana4ml4fpgaRecipe(ComposedRecipe):
         including PATH, JANA_PLUGIN_PATH, and library paths.
         """
         install_path = data['install_path']
-        yield Set('jana4ml4fpga_HOME', install_path)
-        yield Prepend('JANA_PLUGIN_PATH', os.path.join(install_path, 'plugins'))
-        yield Prepend('PATH', os.path.join(install_path, 'bin'))
+        yield EnvSet('jana4ml4fpga_HOME', install_path)
+        yield EnvPrepend('JANA_PLUGIN_PATH', os.path.join(install_path, 'plugins'))
+        yield EnvPrepend('PATH', os.path.join(install_path, 'bin'))
 
         lib_path = os.path.join(install_path, 'lib')
         lib64_path = os.path.join(install_path, 'lib64')
         if os.path.isdir(lib64_path):
-            yield Prepend('LD_LIBRARY_PATH', lib64_path)
+            yield EnvPrepend('LD_LIBRARY_PATH', lib64_path)
         else:
-            yield Prepend('LD_LIBRARY_PATH', lib_path)
+            yield EnvPrepend('LD_LIBRARY_PATH', lib_path)
 
     def patch(self):
         """

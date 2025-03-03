@@ -5,7 +5,7 @@ https://gitlab.cern.ch/hepmc/HepMC3
 import os
 import platform
 
-from edpm.engine.env_gen import Set, Append, Prepend
+from edpm.engine.generators.steps import EnvSet, EnvAppend, EnvPrepend
 from edpm.engine.composed_recipe import ComposedRecipe
 
 
@@ -26,10 +26,10 @@ class HepMC3Recipe(ComposedRecipe):
         path = data['install_path']
         bin_path = os.path.join(path, 'bin')
 
-        yield Prepend('PATH', bin_path)
-        yield Set('HEPMC3_DIR', path)
-        yield Append('CMAKE_PREFIX_PATH', os.path.join(path, 'share', 'HepMC3', 'cmake'))
+        yield EnvPrepend('PATH', bin_path)
+        yield EnvSet('HEPMC3_DIR', path)
+        yield EnvAppend('CMAKE_PREFIX_PATH', os.path.join(path, 'share', 'HepMC3', 'cmake'))
 
         if platform.system() == 'Darwin':
-            yield Append('DYLD_LIBRARY_PATH', os.path.join(path, 'lib'))
-        yield Append('LD_LIBRARY_PATH', os.path.join(path, 'lib'))
+            yield EnvAppend('DYLD_LIBRARY_PATH', os.path.join(path, 'lib'))
+        yield EnvAppend('LD_LIBRARY_PATH', os.path.join(path, 'lib'))

@@ -11,14 +11,14 @@ dependency can also be just a **string** referencing a known built-in recipe (e.
 An EDPM plan file is a YAML document with **two main** top-level keys:
 
 1. **`global`** *(optional)*
-2. **`dependencies`** *(required)*
+2. **`packages`** *(required)*
 
 ### 1.1 `global` Section
 
 The `global:` block can set:
 
 - **Default build configuration** (e.g. `cxx_standard`, `build_threads`)
-- **Environment** that applies to *all* dependencies
+- **Environment** that applies to *all* packages
 - **Any other** top-level settings you wish
 
 Example:
@@ -36,9 +36,9 @@ global:
         PYTHONPATH: "/usr/local/global/python"
 ```
 
-### 1.2 `dependencies` Section
+### 1.2 `packages` Section
 
-The `dependencies:` key is an array. Each array item describes **one** dependency.  
+The `packages:` key is an array. Each array item describes **one** dependency.  
 Each item can be:
 
 1. A **string** naming a known built-in recipe (example: `"root"`, `"geant4"`, `"clhep"`)
@@ -54,7 +54,7 @@ Each item can be:
 If the user wants to install a well-known pre-baked recipe:
 
 ```yaml
-dependencies:
+packages:
   - root
   - geant4
   - clhep
@@ -69,7 +69,7 @@ When the user needs more control, or wants to define a new package with custom f
 create an entry that is a dictionary of the form:
 
 ```yaml
-dependencies:
+packages:
   - my_packet:
     # <key>: <value> pairs describing how to fetch, build, environment, etc.
 ```
@@ -78,7 +78,7 @@ Inside that dictionary, you can mix fields like `fetch:`, `make:`, environment b
 else. For instance:
 
 ```yaml
-dependencies:
+packages:
   - my_packet:
       fetch: "https://github.com/example/mylib.git"
       make: "cmake"
@@ -229,10 +229,10 @@ Or you can rely purely on the plan’s environment blocks.
 
 ## 7. External Requirements
 
-You may still want to declare *system-level* dependencies:
+You may still want to declare *system-level* packages:
 
 ```yaml
-external-requirements:
+require:
   apt:
     - libssl-dev
     - cmake
@@ -262,7 +262,7 @@ global:
     - prepend:
         PATH: "/usr/local/global/bin"
 
-dependencies:
+packages:
   # (A) Minimal usage, just referencing known recipes
   - root
   - geant4
@@ -300,7 +300,7 @@ dependencies:
       environment:
         - set:
             DATAFILES_PATH: "$install_dir"
-      external-requirements:
+      require:
         apt:
           - some-data-utils
         pip:
@@ -328,8 +328,8 @@ dependencies:
 
 This **new** plan format merges the best of both worlds:
 
-1. **String dependencies** for **pre-baked** recipes (like `root`, `geant4`).
-2. **Dictionary-based** dependencies for **composed** logic, with:
+1. **String packages** for **pre-baked** recipes (like `root`, `geant4`).
+2. **Dictionary-based** packages for **composed** logic, with:
     - `fetch:` (autodetect or explicit)
     - `make:` (which build system to use)
     - Additional config fields (branch, cmake_flags, etc.)

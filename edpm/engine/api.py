@@ -31,7 +31,7 @@ def print_packets_info(api: "EdpmApi"):
     if installed_names:
         mprint('\n<b><magenta>INSTALLED PACKAGES:</magenta></b>')
         for dep_name in sorted(installed_names):
-            dep_data = api.lock.get_dependency(dep_name)
+            dep_data = api.lock.get_installed_package(dep_name)
             install_path = dep_data.get("install_path", "")
             mprint(' <b><blue>{}</blue></b>: {}', dep_name, install_path)
     else:
@@ -56,7 +56,7 @@ class EdpmApi:
         self.lock_file = lock_file
 
         self.lock: LockfileConfig = LockfileConfig()
-        self.pm = RecipeManager()
+        self.recipe_manager = RecipeManager()
         self.plan: PlanFile = None
 
     def load_all(self):
@@ -66,7 +66,7 @@ class EdpmApi:
         """
         self.lock.load(self.lock_file)
         self.plan = PlanFile.load(self.plan_file)
-        self.pm.load_installers()
+        self.recipe_manager.load_installers()
 
     def ensure_lock_exists(self):
         """
@@ -93,7 +93,7 @@ class EdpmApi:
         If the user didn't explicitly set a recipe, guess from known recipes
         or default to 'manual'.
         """
-        known = list(self.pm.recipes_by_name.keys())
+        known = list(self.recipe_manager.recipes_by_name.keys())
         if pkg_name in known:
             return pkg_name
         return "manual"
@@ -131,14 +131,14 @@ class EdpmApi:
         """
         Core routine to install a single dependency.
         """
-        dep_obj = self.plan.find_dependency(dep_name)
+        dep_obj = self.plan.find_package(dep_name)
         if not dep_obj:
             mprint("<red>Error:</red> No dependency named '{}' in the plan.", dep_name)
             return
 
         # If already installed and not forcing, skip
         if self.lock.is_installed(dep_name) and not force:
-            ipath = self.lock.get_dependency(dep_name).get("install_path", "")
+            ipath = self.lock.get_installed_package(dep_name).get("install_path", "")
             if os.path.isdir(ipath) and ipath:
                 mprint("<blue>{} is already installed at {}</blue>", dep_name, ipath)
                 return
@@ -148,11 +148,13 @@ class EdpmApi:
         local_cfg = dict(dep_obj.config_block.data)
         combined_config = {**global_cfg, **local_cfg}
 
-        # We do a minimal fallback for "env_file_bash" if the user didn't set it:
-        if "env_file_bash" not in combined_config:
-            plan_dir = os.path.dirname(os.path.abspath(self.plan_file))
-            # fallback to plan_dir/env.sh
-            combined_config["env_file_bash"] = os.path.join(plan_dir, "env.sh")
+        # we need to generate env_bash_file
+        env_gen = self.create_environment_generator()
+        bash_in, bash_out = self.get_env_paths("bash")
+        env_gen.save_environment_with_infile("bash", bash_in, bash_out)
+
+        # save it to packet lock file info
+        combined_config["env_file_bash"] = bash_out
 
         top_dir = self.top_dir
         if not top_dir:
@@ -167,7 +169,7 @@ class EdpmApi:
 
         # Create the recipe, run the pipeline
         try:
-            recipe = self.pm.create_recipe(dep_obj.name, combined_config)
+            recipe = self.recipe_manager.create_recipe(dep_obj.name, combined_config)
             recipe.preconfigure()
             recipe.run_full_pipeline()
         except Exception as e:
@@ -180,7 +182,7 @@ class EdpmApi:
             recipe.config["install_path"] = final_install
 
         # Update lock file
-        self.lock.update_dependency(dep_name, {
+        self.lock.update_package(dep_name, {
             "install_path": final_install,
             "built_with_config": dict(combined_config),
         })
@@ -194,9 +196,72 @@ class EdpmApi:
     def create_environment_generator(self) -> EnvironmentGenerator:
         if not self.plan or not self.lock:
             self.load_all()
-        return EnvironmentGenerator(self.plan, self.lock)
+        return EnvironmentGenerator(self.plan, self.lock, self.recipe_manager)
 
     def create_cmake_generator(self) -> CmakeGenerator:
         if not self.plan or not self.lock:
             self.load_all()
-        return CmakeGenerator(self.plan, self.lock)
+        return CmakeGenerator(self.plan, self.lock, self.recipe_manager)
+
+    def _resolve_output_path(self, config_key: str, default_filename: str) -> str:
+        """
+        Resolve output path based on spec priority:
+        1. Explicitly set in config
+        2. top_dir if exists
+        3. Current working directory
+        """
+        # Get explicit config value
+        explicit_path = self.plan.global_config_block().get(config_key)
+
+        if explicit_path:
+            return os.path.abspath(explicit_path)
+
+        # Try top_dir if configured
+        if self.top_dir:
+            return os.path.join(self.top_dir, default_filename)
+
+        # Fallback to current directory
+        return os.path.join(os.getcwd(), default_filename)
+
+    def get_env_paths(self, shell_type: str) -> tuple:
+        """Get (input_path, output_path) for environment files"""
+        in_key = f"env_{shell_type}_in"
+        out_key = f"env_{shell_type}_out"
+        default_out = f"env.{'sh' if shell_type == 'bash' else 'csh'}"
+
+        in_path = self.plan.global_config_block().get(in_key)
+        out_path = self._resolve_output_path(out_key, default_out)
+        return in_path, out_path
+
+    def get_cmake_toolchain_paths(self) -> tuple:
+        """Get (input_path, output_path) for CMake toolchain"""
+        in_path = self.plan.global_config_block().get("cmake_toolchain_in")
+        out_path = self._resolve_output_path("cmake_toolchain_out", "EDPMToolchain.cmake")
+        return in_path, out_path
+
+    def get_cmake_presets_paths(self) -> tuple:
+        """Get (input_path, output_path) for CMake presets"""
+        in_path = self.plan.global_config_block().get("cmake_presets_in")
+        out_path = self._resolve_output_path("cmake_presets_out", "CMakePresets.json")
+        return in_path, out_path
+
+    def save_generator_scripts(self):
+        # Get all paths through the API
+        bash_in, bash_out = self.get_env_paths("bash")
+        csh_in, csh_out = self.get_env_paths("csh")
+        toolchain_in, toolchain_out = self.get_cmake_toolchain_paths()
+        presets_in, presets_out = self.get_cmake_presets_paths()
+    
+        # Environment files
+        env_gen = self.create_environment_generator()
+        env_gen.save_environment_with_infile("bash", bash_in, bash_out)
+        mprint(f"<green>[Saved]</green> bash environment: {bash_out}")
+        env_gen.save_environment_with_infile("csh", csh_in, csh_out)
+        mprint(f"<green>[Saved]</green> csh  environment: {csh_out}")
+    
+        # CMake files
+        cm_gen = self.create_cmake_generator()
+        cm_gen.save_toolchain_with_infile(toolchain_in, toolchain_out)
+        mprint(f"<green>[Saved]</green> CMake toolchain: {toolchain_out}")
+        cm_gen.save_presets_with_infile(presets_in, presets_out)
+        mprint(f"<green>[Saved]</green> CMake presets  : {presets_out}")

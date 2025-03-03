@@ -7,7 +7,7 @@ import os
 
 import platform
 from edpm.engine.composed_recipe import ComposedRecipe
-from edpm.engine.env_gen import Set, Prepend, Append
+from edpm.engine.generators.steps import EnvSet, EnvPrepend, EnvAppend
 
 class FastJetRecipe(ComposedRecipe):
     """
@@ -33,10 +33,10 @@ class FastJetRecipe(ComposedRecipe):
         Mirrors the original environment logic from the older v2 recipe.
         """
         install_path = data['install_path']
-        yield Prepend('PATH', os.path.join(install_path, 'bin'))
-        yield Prepend('LD_LIBRARY_PATH', os.path.join(install_path, 'lib'))
-        yield Set('FASTJET_ROOT', install_path)
+        yield EnvPrepend('PATH', os.path.join(install_path, 'bin'))
+        yield EnvPrepend('LD_LIBRARY_PATH', os.path.join(install_path, 'lib'))
+        yield EnvSet('FASTJET_ROOT', install_path)
 
         if platform.system() == 'Darwin':
-            yield Append('DYLD_LIBRARY_PATH', os.path.join(install_path, 'lib'))
+            yield EnvAppend('DYLD_LIBRARY_PATH', os.path.join(install_path, 'lib'))
 

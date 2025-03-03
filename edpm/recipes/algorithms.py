@@ -6,7 +6,7 @@ https://github.com/eic/algorithms
 import os
 import platform
 
-from edpm.engine.env_gen import Append, Prepend
+from edpm.engine.generators.steps import EnvAppend
 from edpm.engine.composed_recipe import ComposedRecipe
 
 
@@ -28,8 +28,8 @@ class AlgorithmsRecipe(ComposedRecipe):
 
         # On macOS, add to DYLD_LIBRARY_PATH
         if platform.system() == 'Darwin':
-            yield Append('DYLD_LIBRARY_PATH', os.path.join(path, 'lib'))
+            yield EnvAppend('DYLD_LIBRARY_PATH', os.path.join(path, 'lib'))
 
         # On Linux or others, LD_LIBRARY_PATH
-        yield Append('LD_LIBRARY_PATH', os.path.join(path, 'lib'))
+        yield EnvAppend('LD_LIBRARY_PATH', os.path.join(path, 'lib'))
 

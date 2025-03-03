@@ -39,6 +39,7 @@ class RunCommand(Command):
         click.secho(f"{self.return_code}", fg='red' if self.return_code else 'green', bold=True)
         click.echo()
 
+
 class WorkDirCommand(Command):
     def __init__(self, path):
         super(WorkDirCommand, self).__init__()

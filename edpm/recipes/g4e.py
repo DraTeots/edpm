@@ -8,7 +8,7 @@ https://gitlab.com/jlab-eic/g4e.git
 import os
 
 from edpm.engine.commands import run, workdir
-from edpm.engine.env_gen import Set, Prepend
+from edpm.engine.generators.steps import EnvSet, EnvPrepend
 from edpm.engine.recipe import Recipe
 
 
@@ -25,7 +25,7 @@ class Geant4EicRecipe(Recipe):
         Installs Genfit track fitting framework
         """
 
-        # Set initial values for parent class and self
+        # EnvSet initial values for parent class and self
         super(Geant4EicRecipe, self).__init__('g4e')
         self.clone_command = ''             # is set during self.setup(...)
         self.build_cmd = ''                 # is set during self.setup(...)
@@ -102,10 +102,10 @@ class Geant4EicRecipe(Recipe):
         else:
             source_path = data['install_path']
 
-        yield Prepend('PATH', os.path.join(data['install_path'], 'bin'))  # to make available clhep-config and others
-        yield Prepend('PYTHONPATH', os.path.join(data['install_path'], 'python'))  # to make g4epy available
-        yield Set('G4E_HOME', source_path)                         # where 'resources' are
-        yield Set('G4E_MACRO_PATH', source_path)
+        yield EnvPrepend('PATH', os.path.join(data['install_path'], 'bin'))  # to make available clhep-config and others
+        yield EnvPrepend('PYTHONPATH', os.path.join(data['install_path'], 'python'))  # to make g4epy available
+        yield EnvSet('G4E_HOME', source_path)                         # where 'resources' are
+        yield EnvSet('G4E_MACRO_PATH', source_path)
 
 
     #

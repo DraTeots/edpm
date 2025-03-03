@@ -5,7 +5,7 @@ https://github.com/eic/edm4eic.git
 import os
 import platform
 
-from edpm.engine.env_gen import Set, Append
+from edpm.engine.generators.steps import EnvSet, EnvAppend
 from edpm.engine.composed_recipe import ComposedRecipe
 
 
@@ -25,17 +25,17 @@ class Edm4EicRecipe(ComposedRecipe):
     def gen_env(self, data):
         path = data['install_path']
 
-        yield Set('EICD_ROOT', path)
+        yield EnvSet('EICD_ROOT', path)
 
         if platform.system() == 'Darwin':
             # Some projects might install in lib or lib64
             if os.path.isdir(os.path.join(path, 'lib64')):
-                yield Append('DYLD_LIBRARY_PATH', os.path.join(path, 'lib64'))
-            yield Append('DYLD_LIBRARY_PATH', os.path.join(path, 'lib'))
+                yield EnvAppend('DYLD_LIBRARY_PATH', os.path.join(path, 'lib64'))
+            yield EnvAppend('DYLD_LIBRARY_PATH', os.path.join(path, 'lib'))
 
         # On Linux, we add both lib and lib64 if they exist
         if os.path.isdir(os.path.join(path, 'lib64')):
-            yield Append('LD_LIBRARY_PATH', os.path.join(path, 'lib64'))
-        yield Append('LD_LIBRARY_PATH', os.path.join(path, 'lib'))
+            yield EnvAppend('LD_LIBRARY_PATH', os.path.join(path, 'lib64'))
+        yield EnvAppend('LD_LIBRARY_PATH', os.path.join(path, 'lib'))
 
-        yield Append('CMAKE_PREFIX_PATH', os.path.join(path, 'lib', 'EDM4EIC'))
+        yield EnvAppend('CMAKE_PREFIX_PATH', os.path.join(path, 'lib', 'EDM4EIC'))

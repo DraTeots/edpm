@@ -9,7 +9,7 @@ import platform
 
 from distutils.dir_util import mkpath
 from edpm.engine.composed_recipe import ComposedRecipe
-from edpm.engine.env_gen import Set, Append, Prepend, RawText
+from edpm.engine.generators.steps import EnvAppend, EnvPrepend, EnvRawText
 from edpm.engine.commands import is_not_empty_dir
 
 class Geant4Recipe(ComposedRecipe):
@@ -126,20 +126,20 @@ class Geant4Recipe(ComposedRecipe):
         is_under_conda = 'GEANT_INSTALLED_BY_CONDA' in os.environ
 
         # 1) Make sure PATH includes the new bin
-        yield Prepend('PATH', bin_path)
+        yield EnvPrepend('PATH', bin_path)
 
         # 2) We'll define a function to do in-process environment updates
         def update_python_environment():
             # We do not want to source geant4.sh in Python,
             # so we manually append the library paths
             if os.path.isdir(lib_path):
-                yield Append('LD_LIBRARY_PATH', lib_path)
+                yield EnvAppend('LD_LIBRARY_PATH', lib_path)
                 if platform.system() == 'Darwin':
-                    yield Append('DYLD_LIBRARY_PATH', lib_path)
+                    yield EnvAppend('DYLD_LIBRARY_PATH', lib_path)
             if os.path.isdir(lib64_path):
-                yield Append('LD_LIBRARY_PATH', lib64_path)
+                yield EnvAppend('LD_LIBRARY_PATH', lib64_path)
                 if platform.system() == 'Darwin':
-                    yield Append('DYLD_LIBRARY_PATH', lib64_path)
+                    yield EnvAppend('DYLD_LIBRARY_PATH', lib64_path)
 
         # 3) Prepare the shell scripts
         bash_script = os.path.join(bin_path, 'geant4.sh')
@@ -153,13 +153,13 @@ class Geant4Recipe(ComposedRecipe):
             sh_text = "# Don't call geant4.sh under conda"
             csh_text = "# Don't call geant4.csh under conda"
 
-        # 4) Combine them into a RawText environment action
+        # 4) Combine them into a EnvRawText environment action
         def python_env_updater():
             # This function is called by EDPM to update the Python process environment
             for action in update_python_environment():
                 action.update_python_env()
 
-        yield RawText(sh_text, csh_text, python_env_updater)
+        yield EnvRawText(sh_text, csh_text, python_env_updater)
 
     def patch(self):
         """If you need to apply patches to G4, do it here."""

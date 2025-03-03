@@ -1,11 +1,9 @@
 # edpm/engine/planfile.py
 
 import os
-import sys
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 from ruamel.yaml import YAML
-from edpm.engine.env_gen import EnvironmentManipulation, Set, Prepend, Append
-from edpm.engine.config import ConfigNamespace
+from edpm.engine.generators.steps import GeneratorStep
 
 yaml_rt = YAML(typ='rt')  # round-trip mode
 
@@ -22,13 +20,13 @@ class EnvironmentBlock:
         # data is an array of objects like:  [{set: {...}}, {prepend: {...}}]
         self.data = data or []
 
-    def parse(self, placeholders: Optional[Dict[str, str]] = None) -> List[EnvironmentManipulation]:
+    def parse(self, placeholders: Optional[Dict[str, str]] = None) -> List[GeneratorStep]:
         """
-        Convert environment instructions into EnvironmentManipulation objects.
+        Convert environment instructions into GeneratorStep objects.
         placeholders can be used to expand e.g. "$install_dir"
         """
-        from edpm.engine.env_gen import Set, Prepend, Append
-        results: List[EnvironmentManipulation] = []
+        from edpm.engine.generators.steps import EnvSet, EnvPrepend, EnvAppend
+        results: List[GeneratorStep] = []
 
         if placeholders is None:
             placeholders = {}
@@ -46,11 +44,11 @@ class EnvironmentBlock:
                 for var_name, raw_val in kv_dict.items():
                     expanded_val = expand_placeholders(str(raw_val), placeholders)
                     if action_key == "set":
-                        results.append(Set(var_name, expanded_val))
+                        results.append(EnvSet(var_name, expanded_val))
                     elif action_key == "prepend":
-                        results.append(Prepend(var_name, expanded_val))
+                        results.append(EnvPrepend(var_name, expanded_val))
                     elif action_key == "append":
-                        results.append(Append(var_name, expanded_val))
+                        results.append(EnvAppend(var_name, expanded_val))
                     else:
                         pass  # unknown action
         return results
@@ -116,8 +114,8 @@ class PlanFile:
         self.data = raw_data
         if "global" not in self.data:
             self.data["global"] = {}
-        if "dependencies" not in self.data:
-            self.data["dependencies"] = []
+        if "packages" not in self.data:
+            self.data["packages"] = []
 
         # Ensure there's a config sub-block in global
         if "config" not in self.data["global"]:
@@ -145,17 +143,17 @@ class PlanFile:
     def global_config_block(self) -> ConfigBlock:
         return ConfigBlock(self.data["global"]["config"])
 
-    def get_global_env_actions(self) -> List[EnvironmentManipulation]:
+    def get_global_env_actions(self) -> List[GeneratorStep]:
         block = EnvironmentBlock(self.data["global"]["environment"])
         return block.parse()
 
 
-    def dependencies(self) -> List[Dependency]:
+    def packages(self) -> List[Dependency]:
         """
-        Parse the 'dependencies' array into a list[Dependency].
+        Parse the 'packages' array into a list[Dependency].
         Each item can be a string (baked-in) or a dictionary (custom).
         """
-        deps_list = self.data["dependencies"]
+        deps_list = self.data["packages"]
         result: List[Dependency] = []
 
         for item in deps_list:
@@ -171,7 +169,7 @@ class PlanFile:
             elif isinstance(item, dict):
                 # e.g. { "my_packet": { fetch:..., make:..., environment: [...], etc. } }
                 # or could be multiple keys if user wrote a short form,  but we assume exactly one top-level key: the name
-                # Validate dictionary format for named dependencies
+                # Validate dictionary format for named packages
                 if len(item) != 1:
                     raise ValueError(
                         f"Malformed dependency entry. Each dependency object must have exactly one top-level key.\n"
@@ -210,11 +208,11 @@ class PlanFile:
 
         return result
 
-    def has_dependency(self, name: str) -> bool:
-        return any(d.name == name for d in self.dependencies())
+    def has_package(self, name: str) -> bool:
+        return any(d.name == name for d in self.packages())
 
-    def find_dependency(self, name: str) -> Optional[Dependency]:
-        for d in self.dependencies():
+    def find_package(self, name: str) -> Optional[Dependency]:
+        for d in self.packages():
             if d.name == name:
                 return d
         return None

@@ -7,7 +7,7 @@ https://gitlab.cern.ch/CLHEP/CLHEP
 import os
 import platform
 
-from edpm.engine.env_gen import Set, Append, Prepend
+from edpm.engine.generators.steps import EnvSet, EnvAppend, EnvPrepend
 from edpm.engine.composed_recipe import ComposedRecipe
 
 
@@ -29,14 +29,14 @@ class ClhepRecipe(ComposedRecipe):
         lib_path = os.path.join(path, 'lib')
         bin_path = os.path.join(path, 'bin')
 
-        yield Set('CLHEP', path)
-        yield Set('CLHEP_BASE_DIR', path)
-        yield Set('CLHEP_INCLUDE_DIR', os.path.join(path, 'include'))
-        yield Set('CLHEP_LIB_DIR', lib_path)
+        yield EnvSet('CLHEP', path)
+        yield EnvSet('CLHEP_BASE_DIR', path)
+        yield EnvSet('CLHEP_INCLUDE_DIR', os.path.join(path, 'include'))
+        yield EnvSet('CLHEP_LIB_DIR', lib_path)
 
-        yield Prepend('PATH', bin_path)
-        yield Prepend('LD_LIBRARY_PATH', lib_path)
+        yield EnvPrepend('PATH', bin_path)
+        yield EnvPrepend('LD_LIBRARY_PATH', lib_path)
 
         if platform.system() == 'Darwin':
-            yield Append('DYLD_LIBRARY_PATH', lib_path)
+            yield EnvAppend('DYLD_LIBRARY_PATH', lib_path)
 

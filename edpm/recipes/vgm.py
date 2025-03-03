@@ -9,7 +9,7 @@ https://github.com/vmc-project/vgm
 import os
 import platform
 
-from edpm.engine.env_gen import Set, Append
+from edpm.engine.generators.steps import EnvSet, EnvAppend
 from edpm.engine.composed_recipe import ComposedRecipe
 
 
@@ -29,11 +29,11 @@ class VgmRecipe(ComposedRecipe):
     def gen_env(self, data):
         path = data['install_path']
 
-        yield Set('VGM_DIR', path)
+        yield EnvSet('VGM_DIR', path)
 
         if platform.system() == 'Darwin':
-            yield Append('DYLD_LIBRARY_PATH', os.path.join(path, 'lib'))
-            yield Append('DYLD_LIBRARY_PATH', os.path.join(path, 'lib64'))
+            yield EnvAppend('DYLD_LIBRARY_PATH', os.path.join(path, 'lib'))
+            yield EnvAppend('DYLD_LIBRARY_PATH', os.path.join(path, 'lib64'))
 
-        yield Append('LD_LIBRARY_PATH', os.path.join(path, 'lib'))
-        yield Append('LD_LIBRARY_PATH', os.path.join(path, 'lib64'))
+        yield EnvAppend('LD_LIBRARY_PATH', os.path.join(path, 'lib'))
+        yield EnvAppend('LD_LIBRARY_PATH', os.path.join(path, 'lib64'))

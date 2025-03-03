@@ -15,7 +15,7 @@
 
 global:
   # ---- Typical build config defaults (applies to all dependencies if they support them):
-  cxx_standard: 17
+  cxx_standard: 20
   build_threads: 8
 
   # ---- Example of a global environment block.
@@ -33,9 +33,10 @@ global:
       PYTHONPATH: /usr/local/global/python
 
   config:
-    env_bash_out: /mnt/e/dev/edpm/tests/temp/env.sh
-    env_csh_out: /mnt/e/dev/edpm/tests/env.csh
-    cmake_toolchain_out: /mnt/e/dev/edpm/tests/CmakeToolchain.cmake
-    cmake_presets_out: /mnt/e/dev/edpm/tests/Edpm.presets.json
-dependencies:
+    env_bash_out: /mnt/e/dev/edpm/tests/tmp/env.sh
+    env_csh_out: /mnt/e/dev/edpm/tests/tmp/env.csh
+    cmake_toolchain_out: /mnt/e/dev/edpm/tests/tmp/CmakeToolchain.cmake
+    cmake_presets_out: /mnt/e/dev/edpm/tests/tmp/Edpm.presets.json
+packages:
   - eigen3
+  - podio

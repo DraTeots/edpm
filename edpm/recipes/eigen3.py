@@ -5,7 +5,7 @@ https://gitlab.com/libeigen/eigen.git
 
 import os
 
-from edpm.engine.env_gen import Prepend, Set, Append, CmakeModulePath
+from edpm.engine.generators.steps import CmakePrefixPath
 from edpm.engine.composed_recipe import ComposedRecipe
 
 
@@ -24,7 +24,8 @@ class EigenRecipe(ComposedRecipe):
         super().__init__(name='eigen3', config=config)
 
 
-    def gen_env(self, data):
+    @staticmethod
+    def gen_env(data):
         """Generates environments to be set"""
-        yield CmakeModulePath(os.path.join(data['install_path'], 'share/eigen3/cmake/'))
+        yield CmakePrefixPath(os.path.join(data['install_path'], 'share/eigen3/cmake/'))
 

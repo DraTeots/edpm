@@ -1,7 +1,7 @@
 from typing import Optional
 from edpm.engine.recipe import Recipe
 from edpm.engine.config import ConfigNamespace
-from edpm.engine.components import make_fetcher, make_maker
+from edpm.engine.recipe_components import make_fetcher, make_maker
 
 class ComposedRecipe(Recipe):
 

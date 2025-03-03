@@ -125,7 +125,7 @@ edpm config global cxx_standard=17   # It is recommended if compiler supports C+
 edpm install eicrecon            # install eicrecon and dependencies (like genfit, jana and rave)
 edpm install g4e              # install Geant-4-Eic and dependencies (Geant4, etc)
 
-# Set environment
+# EnvSet environment
 source<(edpm env)             # set environment variables
 edpm env csh > your.csh       # if you are still on CSH
 
@@ -212,10 +212,10 @@ edpm config            # edpm config global
 edpm config global     # Show global configs
 edpm config root       # Show configs for packet root
 
-edpm config global cxx_standard=14  # Set globally to use C++14 for all new packages  
+edpm config global cxx_standard=14  # EnvSet globally to use C++14 for all new packages  
                                     # (if that is not overwritten by the package config)
 
-edpm config acts cxx_standard=17    # Set cxx standard for root (overwrites global level)
+edpm config acts cxx_standard=17    # EnvSet cxx standard for root (overwrites global level)
 ```
 
 Config allows

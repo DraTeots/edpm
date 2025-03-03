@@ -14,7 +14,7 @@ class LockfileConfig:
         self.data: Dict[str, Any] = {
             "file_version": self.DEFAULT_FILE_VERSION,
             "top_dir": "",
-            "dependencies": {}
+            "packages": {}
         }
         self.is_loaded = False
 
@@ -44,18 +44,18 @@ class LockfileConfig:
     def top_dir(self, path: str):
         self.data["top_dir"] = path
 
-    def get_dependency(self, name: str) -> Dict[str, Any]:
-        return self.data["dependencies"].get(name, {})
+    def get_installed_package(self, name: str) -> Dict[str, Any]:
+        return self.data["packages"].get(name, {})
 
     def is_installed(self, name: str) -> bool:
-        dep_data = self.get_dependency(name)
+        dep_data = self.get_installed_package(name)
         ipath = dep_data.get("install_path", "")
         return bool(ipath and os.path.isdir(ipath))
 
-    def update_dependency(self, name: str, info: Dict[str, Any]):
-        if name not in self.data["dependencies"]:
-            self.data["dependencies"][name] = {}
-        self.data["dependencies"][name].update(info)
+    def update_package(self, name: str, info: Dict[str, Any]):
+        if name not in self.data["packages"]:
+            self.data["packages"][name] = {}
+        self.data["packages"][name].update(info)
 
-    def get_all_dependencies(self):
-        return list(self.data["dependencies"].keys())
+    def get_installed_packages(self):
+        return list(self.data["packages"].keys())

@@ -54,7 +54,7 @@ def _show_configs(ectx: EdpmApi, name: str):
         return
 
     # Otherwise, it’s a dependency name
-    dep = ectx.plan.find_dependency(name)
+    dep = ectx.plan.find_package(name)
     if not dep:
         mprint("<red>Error:</red> No dependency named '{}' in the plan.\n"
                "Create one with:\n  edpm config {} recipe=<recipe_name>\n", name, name)
@@ -113,7 +113,7 @@ def _update_dep_config(ectx: EdpmApi, dep_name: str, kvpairs: dict):
     2) Merge param=val into that dependency's fields (branch, cmake_flags, etc.).
     3) Show final result.
     """
-    dep = ectx.plan.find_dependency(dep_name)
+    dep = ectx.plan.find_package(dep_name)
     if not dep:
         # Possibly the user is creating a brand-new dependency
         recipe = kvpairs.get("recipe", None)
@@ -125,7 +125,7 @@ def _update_dep_config(ectx: EdpmApi, dep_name: str, kvpairs: dict):
         ectx.plan.add_dependency(name=dep_name, recipe=recipe)
 
         # Now that it’s created, retrieve it
-        dep = ectx.plan.find_dependency(dep_name)
+        dep = ectx.plan.find_package(dep_name)
 
     # Now dep exists, merge fields
     # e.g. if kvpairs has branch=..., we do dep.branch = ...
