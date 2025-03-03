@@ -94,9 +94,15 @@ def edpm_cli(ctx, plan, lock, top_dir):
 
     # If user passed --top-dir, set it in the DB
     if top_dir:
+        if ctx.invoked_subcommand == "init":
+            mprint("<b><red>ERROR</red></b> --top-dir flag is given with 'init' command, "
+                   "which means the desired lock file doesn't exist yet and we can't save top-dir value. "
+                   "Please run 'edpm init' without --top-dir flag and then use:\n"
+                   f"edpm --top-dir={top_dir}\n\n")
+            exit(1)
         api.lock.top_dir = os.path.abspath(os.path.normpath(top_dir))
         api.lock.save()
-        db_existed = True  # We forced a save => DB now exists
+
 
     # If no existing DB, show welcome message
 

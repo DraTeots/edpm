@@ -21,8 +21,6 @@ ENV EIC_ROOT=/eic
 ENV CONTAINER_ROOT=/container
 ENV APP_ROOT=/container/app
 
-SHELL ["/bin/bash", "-c"]
-
 ARG DEBIAN_FRONTEND=noninteractive
 
 # Install OS dependencies
@@ -61,12 +59,10 @@ ENV LC_ALL=C.UTF-8
 ENV LANG=C.UTF-8
 
 # Install EDPM v3 and set the top_dir
-RUN python3 -m pip install --user --upgrade --force-reinstall --break-system-packages ruamel.yaml click appdirs edpm &&\
-    edpm --top-dir=/container/app &&\
-    edpm
+RUN python3 -m pip install --user --upgrade --force-reinstall --break-system-packages ruamel.yaml click appdirs edpm
 
 # Initialize a brand-new EDPM plan (plan.edpm.yaml) if none exists
-RUN edpm init --force
+RUN cd ${APP_ROOT} && edpm init --force && edpm --top-dir=${APP_ROOT}
 
 # Configure global settings
 RUN edpm config global cxx_standard=20 &&\
@@ -112,6 +108,8 @@ RUN ls && pwd
 # RUN python3 -m pip install --user jupyterlab
 
 USER root
+
+SHELL ["/bin/bash", "-c"]
 
 # Create an entrypoint script that sources environment
 RUN echo '#!/bin/bash' > /entrypoint.sh && \

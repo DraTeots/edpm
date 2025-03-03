@@ -97,7 +97,8 @@ class Jana4ml4fpgaRecipe(ComposedRecipe):
         mkpath(source_path)
         run(clone_cmd)
 
-    def gen_env(self, data):
+    @staticmethod
+    def gen_env(data):
         """
         Sets environment variables for JANA4ML4FPGA,
         including PATH, JANA_PLUGIN_PATH, and library paths.

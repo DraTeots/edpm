@@ -27,7 +27,8 @@ class FastJetRecipe(ComposedRecipe):
         }
         super().__init__(name='fastjet', config=config)
 
-    def gen_env(self, data):
+    @staticmethod
+    def gen_env(data):
         """
         Sets environment variables so that other software can discover FastJet.
         Mirrors the original environment logic from the older v2 recipe.

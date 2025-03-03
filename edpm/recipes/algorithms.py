@@ -23,7 +23,8 @@ class AlgorithmsRecipe(ComposedRecipe):
         }
         super().__init__(name='algorithms', config=config)
 
-    def gen_env(self, data):
+    @staticmethod
+    def gen_env(data):
         path = data['install_path']
 
         # On macOS, add to DYLD_LIBRARY_PATH

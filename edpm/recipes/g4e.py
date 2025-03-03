@@ -19,7 +19,6 @@ class Geant4EicRecipe(Recipe):
     install_path = {app_path}/root-{version}         # Where the binary installation is
     """
 
-
     def __init__(self):
         """
         Installs Genfit track fitting framework

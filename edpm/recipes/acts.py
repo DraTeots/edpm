@@ -5,7 +5,7 @@ https://gitlab.cern.ch/acts/acts-core
 
 import os
 
-from edpm.engine.generators.steps import EnvSet, EnvAppend
+from edpm.engine.generators.steps import EnvSet, EnvAppend, CmakePrefixPath
 from edpm.engine.composed_recipe import ComposedRecipe
 
 
@@ -43,6 +43,6 @@ class ActsRecipe(ComposedRecipe):
         yield EnvAppend('LD_LIBRARY_PATH', os.path.join(path, 'lib'))
 
         # share/cmake/Acts
-        yield EnvAppend('CMAKE_PREFIX_PATH', os.path.join(path, 'lib', 'cmake', 'Acts'))
-        yield EnvAppend('CMAKE_PREFIX_PATH', os.path.join(path, 'lib', 'cmake', 'nlohmann_json'))
-        yield EnvAppend('CMAKE_PREFIX_PATH', os.path.join(path, 'lib', 'cmake', 'ActsDD4hep'))
+        yield CmakePrefixPath(os.path.join(path, 'lib', 'cmake', 'Acts'))
+        yield CmakePrefixPath(os.path.join(path, 'lib', 'cmake', 'nlohmann_json'))
+        yield CmakePrefixPath(os.path.join(path, 'lib', 'cmake', 'ActsDD4hep'))

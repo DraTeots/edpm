@@ -22,7 +22,8 @@ class PodioRecipe(ComposedRecipe):
         }
         super().__init__(name='podio', config=config)
 
-    def gen_env(self, data):
+    @staticmethod
+    def gen_env(data):
         path = data['install_path']
 
         yield EnvSet('PODIO_ROOT', path)

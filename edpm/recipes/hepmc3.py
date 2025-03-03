@@ -5,7 +5,7 @@ https://gitlab.cern.ch/hepmc/HepMC3
 import os
 import platform
 
-from edpm.engine.generators.steps import EnvSet, EnvAppend, EnvPrepend
+from edpm.engine.generators.steps import EnvSet, EnvAppend, EnvPrepend, CmakePrefixPath
 from edpm.engine.composed_recipe import ComposedRecipe
 
 
@@ -22,7 +22,8 @@ class HepMC3Recipe(ComposedRecipe):
         }
         super().__init__(name='hepmc3', config=config)
 
-    def gen_env(self, data):
+    @staticmethod
+    def gen_env(data):
         path = data['install_path']
         bin_path = os.path.join(path, 'bin')
 

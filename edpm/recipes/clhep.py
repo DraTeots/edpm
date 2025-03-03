@@ -24,7 +24,8 @@ class ClhepRecipe(ComposedRecipe):
         }
         super().__init__(name='clhep', config=config)
 
-    def gen_env(self, data):
+    @staticmethod
+    def gen_env(data):
         path = data['install_path']
         lib_path = os.path.join(path, 'lib')
         bin_path = os.path.join(path, 'bin')

@@ -10,7 +10,7 @@ from distutils.dir_util import mkpath
 from subprocess import check_output
 
 from edpm.engine.composed_recipe import ComposedRecipe
-from edpm.engine.generators.steps import EnvSet, EnvPrepend, EnvRawText
+from edpm.engine.generators.steps import EnvSet, EnvPrepend, EnvRawText, CmakePrefixPath
 from edpm.engine.commands import is_not_empty_dir
 
 ROOTSYS = "ROOTSYS"
@@ -125,9 +125,9 @@ class RootRecipe(ComposedRecipe):
 
     def _find_python(self):
         """
-        Attempt to find a 'python3', fallback to python2, python.
+        Attempt to find a 'python3', fallback to python.
         """
-        candidates = ["python3", "python2", "python"]
+        candidates = ["python3", "python"]
         for prog in candidates:
             try:
                 path = check_output(["which", prog]).decode().strip()
@@ -176,7 +176,8 @@ class RootRecipe(ComposedRecipe):
         """
         pass
 
-    def gen_env(self, data):
+    @staticmethod
+    def gen_env(data):
         """
         Replicates environment logic from old recipe (including conda skip).
         """
@@ -184,7 +185,7 @@ class RootRecipe(ComposedRecipe):
         bin_path = os.path.join(install_path, 'bin')
         lib_path = os.path.join(install_path, 'lib')
         cmake_path = os.path.join(install_path, 'cmake')
-        yield EnvPrepend('CMAKE_PREFIX_PATH', cmake_path)
+        yield CmakePrefixPath( cmake_path)
 
         # We'll skip calling 'thisroot' if conda is found
         is_under_conda = os.environ.get('ROOT_INSTALLED_BY_CONDA', False)

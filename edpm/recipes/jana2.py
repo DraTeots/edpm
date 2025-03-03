@@ -6,7 +6,7 @@ https://github.com/JeffersonLab/JANA2
 import os
 import platform
 
-from edpm.engine.generators.steps import EnvSet, EnvAppend, EnvPrepend
+from edpm.engine.generators.steps import EnvSet, EnvAppend, EnvPrepend, CmakePrefixPath
 from edpm.engine.composed_recipe import ComposedRecipe
 
 
@@ -23,7 +23,8 @@ class Jana2Recipe(ComposedRecipe):
         }
         super().__init__(name='jana2', config=config)
 
-    def gen_env(self, data):
+    @staticmethod
+    def gen_env(data):
         path = data['install_path']
 
         yield EnvSet('JANA_HOME', path)
@@ -31,6 +32,7 @@ class Jana2Recipe(ComposedRecipe):
         yield EnvPrepend('PATH', os.path.join(path, 'bin'))
         yield EnvPrepend('LD_LIBRARY_PATH', os.path.join(path, 'lib'))
         yield EnvAppend('CMAKE_PREFIX_PATH', os.path.join(path, 'lib', 'cmake', 'JANA'))
+        yield CmakePrefixPath(os.path.join(path, 'lib', 'cmake', 'JANA'))
 
         if platform.system() == 'Darwin':
             yield EnvAppend('DYLD_LIBRARY_PATH', os.path.join(path, 'lib'))

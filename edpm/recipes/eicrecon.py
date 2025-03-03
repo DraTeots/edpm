@@ -22,7 +22,8 @@ class EicreconRecipe(ComposedRecipe):
         }
         super().__init__(name='eicrecon', config=config)
 
-    def gen_env(self, data):
+    @staticmethod
+    def gen_env(data):
         path = data['install_path']
         lib_path = os.path.join(path, 'lib')
         lib64_path = os.path.join(path, 'lib64')

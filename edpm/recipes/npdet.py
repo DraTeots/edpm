@@ -22,7 +22,8 @@ class NpDetRecipe(ComposedRecipe):
         }
         super().__init__(name='npdet', config=config)
 
-    def gen_env(self, data):
+    @staticmethod
+    def gen_env(data):
         path = data['install_path']
 
         yield EnvPrepend('LD_LIBRARY_PATH', os.path.join(path, 'lib'))

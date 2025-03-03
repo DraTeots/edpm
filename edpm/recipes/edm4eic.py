@@ -22,7 +22,8 @@ class Edm4EicRecipe(ComposedRecipe):
         }
         super().__init__(name='edm4eic', config=config)
 
-    def gen_env(self, data):
+    @staticmethod
+    def gen_env(data):
         path = data['install_path']
 
         yield EnvSet('EICD_ROOT', path)

@@ -112,7 +112,8 @@ class Geant4Recipe(ComposedRecipe):
         mkpath(source_path)
         run(clone_cmd)
 
-    def gen_env(self, data):
+    @staticmethod
+    def gen_env(data):
         """
         Sets environment to source geant4.sh/csh after installation.
         Also skips if 'GEANT_INSTALLED_BY_CONDA' is set.

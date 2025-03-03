@@ -19,7 +19,7 @@ def print_packets_info(api: "EdpmApi"):
     """
     Helper function to print installed vs. not-installed packages info.
     """
-    all_deps = [d.name for d in api.plan.dependencies()]
+    all_deps = [d.name for d in api.plan.packages()]
     installed_names = []
     not_installed_names = []
     for dep_name in all_deps:
@@ -43,6 +43,17 @@ def print_packets_info(api: "EdpmApi"):
             mprint(' <b><blue>{}</blue></b>', dep_name)
     else:
         mprint("\nAll plan packages appear to be installed.")
+
+    _, bash_out = api.get_env_paths("bash")
+    _, csh_out = api.get_env_paths("csh")
+    _, toolchain_out = api.get_cmake_toolchain_paths()
+    _, presets_out = api.get_cmake_presets_paths()
+
+    mprint(f"<b><blue>bash env</blue></b>        : {bash_out}")
+    mprint(f"<b><blue>csh  env</blue></b>        : {csh_out}")
+    mprint(f"<b><blue>CMake toolchain</blue></b> : {toolchain_out}")
+    mprint(f"<b><blue>CMake presets  </blue></b> : {presets_out}")
+
 
 
 class EdpmApi:

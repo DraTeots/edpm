@@ -22,7 +22,8 @@ class ActsSvgRecipe(ComposedRecipe):
         }
         super().__init__(name='actssvg', config=config)
 
-    def gen_env(self, data):
+    @staticmethod
+    def gen_env(data):
         path = data['install_path']
 
         if platform.system() == 'Darwin':

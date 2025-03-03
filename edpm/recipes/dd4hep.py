@@ -23,7 +23,8 @@ class DD4HepRecipe(ComposedRecipe):
         }
         super().__init__(name='dd4hep', config=config)
 
-    def gen_env(self, data):
+    @staticmethod
+    def gen_env(data):
         path = data['install_path']
         bin_path = os.path.join(path, 'bin')
         lib_path = os.path.join(path, 'lib')

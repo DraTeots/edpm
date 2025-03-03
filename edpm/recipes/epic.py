@@ -20,7 +20,8 @@ class EpicRecipe(ComposedRecipe):
         }
         super().__init__(name='epic', config=config)
 
-    def gen_env(self, data):
+    @staticmethod
+    def gen_env(data):
         path = data['install_path']
 
         yield EnvPrepend('LD_LIBRARY_PATH', os.path.join(path, 'lib'))
