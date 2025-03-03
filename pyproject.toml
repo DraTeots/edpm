@@ -27,6 +27,12 @@ Homepage = "https://github.com/DraTeots/edpm"
 [project.scripts]
 edpm = "edpm.cli:edpm_cli"
 
+
+[project.optional-dependencies]
+test = [
+    "pytest"
+]
+
 [build-system]
 requires = ["setuptools>=66.0", "wheel"]
 build-backend = "setuptools.build_meta"

@@ -1,3 +1,0 @@
-click >= 8
-pytest
-ruamel.yaml
