@@ -24,7 +24,7 @@ authors = [
 Homepage = "https://github.com/DraTeots/edpm"
 
 [project.scripts]
-edpm = "edpm:edpm_cli"
+edpm = "edpm.cli:edpm_cli"
 
 [build-system]
 requires = ["setuptools>=66.0", "wheel"]
