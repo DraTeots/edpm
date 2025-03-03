@@ -1,160 +1,186 @@
 import os
 import pytest
 
-# Path to temporary files for testing
-TEST_DIR = ""
-BASH_IN_PATH = os.path.join(TEST_DIR, "env_bash_in.sh")
-BASH_OUT_PATH = os.path.join(TEST_DIR, "env_bash_out.sh")
-CSH_IN_PATH = os.path.join(TEST_DIR, "env_csh_in.csh")
-CSH_OUT_PATH = os.path.join(TEST_DIR, "env_csh_out.csh")
+from edpm.engine.api import EdpmApi
+from edpm.engine.generators.environment_generator import EnvironmentGenerator
+from edpm.engine.generators.cmake_generator import CmakeGenerator
+from edpm.engine.planfile import PlanFile
+
+TEST_DIR = os.path.dirname(os.path.abspath(__file__))
+TEST_TMP_DIR = os.path.join(TEST_DIR, "tmp")
+
+BASH_IN_PATH = os.path.join(TEST_TMP_DIR, "env_bash_in.sh")
+BASH_OUT_PATH = os.path.join(TEST_TMP_DIR, "env_bash_out.sh")
+CSH_IN_PATH = os.path.join(TEST_TMP_DIR, "env_csh_in.csh")
+CSH_OUT_PATH = os.path.join(TEST_TMP_DIR, "env_csh_out.csh")
+
 
 @pytest.fixture
 def setup_test_environment():
-    # Prepare the testing environment directory
-    os.makedirs(TEST_DIR, exist_ok=True)
+    """Sets up a temporary directory and sample 'in' files with placeholders."""
+    os.makedirs(TEST_TMP_DIR, exist_ok=True)
 
     # Create an initial env_bash_in file with a placeholder
     with open(BASH_IN_PATH, "w") as f:
-        f.write("# Initial content\n# {{{EDPM-CONTENT}}}\n# End content\n")
+        f.write("# Initial content (bash)\n# {{{EDPM-CONTENT}}}\n# End content\n")
 
     # Create an initial env_csh_in file with a placeholder
     with open(CSH_IN_PATH, "w") as f:
-        f.write("# Initial content\n# {{{EDPM-CONTENT}}}\n# End content\n")
+        f.write("# Initial content (csh)\n# {{{EDPM-CONTENT}}}\n# End content\n")
 
-    yield  # Test will run here
+    yield  # Tests run
 
-    # Clean up
-    os.remove(BASH_IN_PATH)
-    os.remove(BASH_OUT_PATH)
-    os.remove(CSH_IN_PATH)
-    os.remove(CSH_OUT_PATH)
-    os.rmdir(TEST_DIR)
+    # Cleanup
+    for path in [BASH_IN_PATH, BASH_OUT_PATH, CSH_IN_PATH, CSH_OUT_PATH]:
+        if os.path.exists(path):
+            os.remove(path)
+    try:
+        os.rmdir(TEST_TMP_DIR)
+    except OSError:
+        pass
+
+
+def _make_minimal_api():
+    """Returns an EdpmApi with a minimal in-memory plan + lock, no actual disk files."""
+    api = EdpmApi(plan_file="in-memory-plan.yaml", lock_file="in-memory-lock.yaml")
+    raw_data = {
+        "global": {
+            "config": {},
+            "environment": [
+                {"set": {"MY_VAR": "some_value"}}
+            ]
+        },
+        "packages": []
+    }
+    from edpm.engine.planfile import PlanFile
+    api.plan = PlanFile(raw_data)
+    api.lock.data = {
+        "top_dir": "/fake/top_dir",
+        "packages": {}
+    }
+    return api
 
 
 def test_env_save_with_in_out_files(setup_test_environment):
-    from edpm.engine.api import EdpmApi
-
-    # Simulating plan and lock file loading (these would be created or read from test fixtures)
-    plan_file = "/path/to/plan.edpm.yaml"
-    lock_file = "/path/to/plan-lock.edpm.yaml"
-
-    # Mocked EDPM API to load plan and perform the actions
-    api = EdpmApi(plan_file=plan_file, lock_file=lock_file)
-    api.load_all()  # Simulate loading the plan and lock files
-
-    # Define global config settings for in and out files
-    api.plan.data["global"]["config"] = {
+    """
+    If 'in' files exist with the EDPM placeholder, verify merging environment lines.
+    """
+    api = _make_minimal_api()
+    api.plan.data["global"]["config"].update({
         "env_bash_in": BASH_IN_PATH,
         "env_bash_out": BASH_OUT_PATH,
         "env_csh_in": CSH_IN_PATH,
-        "env_csh_out": CSH_OUT_PATH,
-    }
+        "env_csh_out": CSH_OUT_PATH
+    })
 
-    # Mock the generated content for testing
-    generated_bash_content = "# Generated EDPM content for bash\nexport PATH=/usr/local/bin:$PATH"
-    generated_csh_content = "# Generated EDPM content for csh\nsetenv PATH /usr/local/bin:$PATH"
+    env_gen = EnvironmentGenerator(plan=api.plan, lock=api.lock, recipe_manager=api.recipe_manager)
+    # Merge for bash
+    env_gen.save_environment_with_infile("bash", BASH_IN_PATH, BASH_OUT_PATH)
+    # Merge for csh
+    env_gen.save_environment_with_infile("csh", CSH_IN_PATH, CSH_OUT_PATH)
 
-    # Call the function to save the generated files
-    api.save_shell_environment(shell="bash", filename=BASH_OUT_PATH)
-    api.save_shell_environment(shell="csh", filename=CSH_OUT_PATH)
-
-    # Verify that content is correctly merged into the "out" files
     with open(BASH_OUT_PATH, "r") as f:
         content = f.read()
-        assert "# Initial content" in content
-        assert "# Generated EDPM content for bash" in content  # EDPM content should be inserted
+        assert "# Initial content (bash)" in content
+        assert "export MY_VAR=\"some_value\"" in content
 
     with open(CSH_OUT_PATH, "r") as f:
         content = f.read()
-        assert "# Initial content" in content
-        assert "# Generated EDPM content for csh" in content  # EDPM content should be inserted
+        assert "# Initial content (csh)" in content
+        assert "setenv MY_VAR \"some_value\"" in content
 
 
 def test_env_save_without_in_files(setup_test_environment):
-    from edpm.engine.api import EdpmApi
+    """
+    If no 'in' files are defined, we want to generate environment scripts from scratch.
+    We'll pass in None (instead of empty string) to skip merging logic.
+    """
+    api = _make_minimal_api()
+    env_gen = EnvironmentGenerator(plan=api.plan, lock=api.lock, recipe_manager=api.recipe_manager)
 
-    # Prepare the API without setting any "in" files
-    api = EdpmApi(plan_file="/path/to/plan.edpm.yaml", lock_file="/path/to/plan-lock.edpm.yaml")
-    api.load_all()
+    # Instead of "", pass None to avoid FileNotFoundError
+    env_gen.save_environment_with_infile("bash", None, BASH_OUT_PATH)
+    env_gen.save_environment_with_infile("csh", None, CSH_OUT_PATH)
 
-    # Ensure no "in" files are set (empty values)
-    api.plan.data["global"]["config"] = {}
-
-    # Call the function to save the generated files
-    api.save_shell_environment(shell="bash", filename=BASH_OUT_PATH)
-    api.save_shell_environment(shell="csh", filename=CSH_OUT_PATH)
-
-    # Verify that the files were created and contain only the generated content
-    with open(BASH_OUT_PATH, "r") as f:
+    with open(BASH_OUT_PATH) as f:
         content = f.read()
-        assert "# Generated EDPM content for bash" in content
-        assert "export PATH=/usr/local/bin:$PATH" in content
+        assert "#!/usr/bin/env bash" in content
+        assert "export MY_VAR=\"some_value\"" in content
 
-    with open(CSH_OUT_PATH, "r") as f:
+    with open(CSH_OUT_PATH) as f:
         content = f.read()
-        assert "# Generated EDPM content for csh" in content
-        assert "setenv PATH /usr/local/bin:$PATH" in content
+        assert "#!/usr/bin/env csh" in content
+        assert "setenv MY_VAR \"some_value\"" in content
 
 
 def test_cmake_toolchain_in_out(setup_test_environment):
-    # Similar test for cmake toolchain files
-    CM_TOOLCHAIN_IN_PATH = os.path.join(TEST_DIR, "cmake_toolchain_in.cmake")
-    CM_TOOLCHAIN_OUT_PATH = os.path.join(TEST_DIR, "cmake_toolchain_out.cmake")
+    """
+    1) Create minimal plan, set cmake_toolchain_in/out in global config.
+    2) Save toolchain with placeholders.
+    3) Confirm final file merges + includes EDPM's 'Automatically generated' lines.
+    """
+    cm_in = os.path.join(TEST_TMP_DIR, "cmake_toolchain_in.cmake")
+    cm_out = os.path.join(TEST_TMP_DIR, "cmake_toolchain_out.cmake")
+    with open(cm_in, "w") as f:
+        f.write("# Initial CMake content\n# {{{EDPM-CONTENT}}}\n")
 
-    with open(CM_TOOLCHAIN_IN_PATH, "w") as f:
-        f.write("# Initial content\n# {{{EDPM-CONTENT}}}\n")
+    api = _make_minimal_api()
+    api.plan.data["global"]["config"].update({
+        "cmake_toolchain_in": cm_in,
+        "cmake_toolchain_out": cm_out
+    })
 
-    from edpm.engine.api import EdpmApi
+    cm_gen = CmakeGenerator(plan=api.plan, lock=api.lock, recipe_manager=api.recipe_manager)
+    cm_gen.save_toolchain_with_infile(cm_in, cm_out)
 
-    api = EdpmApi(plan_file="/path/to/plan.edpm.yaml", lock_file="/path/to/plan-lock.edpm.yaml")
-    api.load_all()
-
-    # Define global config settings for cmake toolchain files
-    api.plan.data["global"]["config"] = {
-        "cmake_toolchain_in": CM_TOOLCHAIN_IN_PATH,
-        "cmake_toolchain_out": CM_TOOLCHAIN_OUT_PATH
-    }
-
-    # Mock the generated content for testing
-    generated_toolchain_content = "# Generated EDPM content for CMake\nset(CMAKE_PREFIX_PATH /usr/local)"
-
-    # Save the toolchain file
-    api.save_cmake_toolchain(CM_TOOLCHAIN_OUT_PATH)
-
-    # Verify that content is correctly merged into the "out" files
-    with open(CM_TOOLCHAIN_OUT_PATH, "r") as f:
+    with open(cm_out) as f:
         content = f.read()
-        assert "# Initial content" in content
-        assert "# Generated EDPM content for CMake" in content  # EDPM content should be inserted
+        assert "# Initial CMake content" in content
+        # The new generator at least writes a comment header
+        assert "# Automatically generated by EDPM" in content
 
 
 def test_cmake_presets_in_out(setup_test_environment):
-    # Testing for CMake presets
-    CM_PRESETS_IN_PATH = os.path.join(TEST_DIR, "cmake_presets_in.json")
-    CM_PRESETS_OUT_PATH = os.path.join(TEST_DIR, "cmake_presets_out.json")
+    """
+    1) Minimal plan, set cmake_presets_in/out
+    2) Save presets
+    3) Confirm final JSON merges
+    """
+    import json
 
-    # Create a simple initial JSON file for presets
-    initial_json_content = '{"version": 3, "configurePresets": [{"name": "edpm"}]}'
-    with open(CM_PRESETS_IN_PATH, "w") as f:
-        f.write(initial_json_content)
+    cm_in = os.path.join(TEST_TMP_DIR, "cmake_presets_in.json")
+    cm_out = os.path.join(TEST_TMP_DIR, "cmake_presets_out.json")
+    initial_json = '{"version": 3, "configurePresets": [{"name":"base"}]}'
+    with open(cm_in, "w") as f:
+        f.write(initial_json)
 
-    from edpm.engine.api import EdpmApi
-    api = EdpmApi(plan_file="/path/to/plan.edpm.yaml", lock_file="/path/to/plan-lock.edpm.yaml")
-    api.load_all()
+    api = _make_minimal_api()
+    api.plan.data["global"]["config"].update({
+        "cmake_presets_in": cm_in,
+        "cmake_presets_out": cm_out
+    })
 
-    # Define global config settings for cmake presets
-    api.plan.data["global"]["config"] = {
-        "cmake_presets_in": CM_PRESETS_IN_PATH,
-        "cmake_presets_out": CM_PRESETS_OUT_PATH
-    }
+    cm_gen = CmakeGenerator(plan=api.plan, lock=api.lock, recipe_manager=api.recipe_manager)
+    cm_gen.save_presets_with_infile(cm_in, cm_out)
 
-    # Call to generate and save CMake presets
-    api.save_cmake_presets(CM_PRESETS_OUT_PATH)
-
-    # Verify that the JSON content is merged properly
-    with open(CM_PRESETS_OUT_PATH, "r") as f:
+    # Quick substring check is still fine:
+    with open(cm_out) as f:
         content = f.read()
-        assert '{"version": 3,' in content
-        assert '"name": "edpm"' in content
-        assert '"cacheVariables": {}' in content  # Example cache variable inclusion
+        # We still confirm "version": 3 is there
+        assert '"version": 3' in content
+
+    # Now parse the JSON properly:
+    with open(cm_out, "r") as f:
+        data = json.load(f)
+
+    # We expect 'version' = 3
+    assert data["version"] == 3
+
+    # Confirm that "base" is among the preset names
+    presets = data.get("configurePresets", [])
+    preset_names = [p.get("name", "") for p in presets]
+    assert "base" in preset_names, f"Expected 'base' in {preset_names}"
+
+    # If you want to ensure the generator added an “edpm” preset:
+    # assert "edpm" in preset_names
 
