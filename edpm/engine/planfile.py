@@ -1,5 +1,3 @@
-# edpm/engine/planfile.py
-
 import os
 from typing import Any, Dict, List, Optional
 from ruamel.yaml import YAML
@@ -51,50 +49,27 @@ class EnvironmentBlock:
                         results.append(EnvAppend(var_name, expanded_val))
                     else:
                         pass  # unknown action
+
         return results
-
-
-class ConfigBlock:
-    """
-    A small wrapper for storing fields from the plan.
-    E.g. "fetch", "make", "branch", "cmake_flags", etc.
-    """
-    def __init__(self, data: Dict[str, Any]):
-        self.data = data
-
-    def __getitem__(self, key: str) -> Any:
-        return self.data.get(key)
-
-    def get(self, key: str, default=None):
-        return self.data.get(key, default)
-
-    def update(self, other: Dict[str, Any]):
-        self.data.update(other)
-
-    def keys(self):
-        return self.data.keys()
-
-    def __contains__(self, key):
-        return key in self.data
-
 
 class PlanPackage:
     """
     Represents one dependency from the plan.
 
-    This new version can either be:
-    1) A "baked in" name (like "root" or "geant4"), or
-    2) A custom dictionary with 'fetch', 'make', environment, etc.
+    This can be:
+      1) A "baked in" name (like "root" or "geant4"), possibly with @version
+      2) A custom dictionary with 'fetch', 'make', environment, etc.
 
-    We store a ConfigBlock for any data: fetch, make, branch, etc.
-    We also store an EnvironmentBlock for environment instructions.
+    `config` is just a dict, no separate ConfigBlock anymore.
+    `env_block_obj` is an EnvironmentBlock for environment instructions if present.
     """
 
     def __init__(self, name: str, config_data: Dict[str, Any], env_data: List[Any], is_baked_in: bool = False):
         self._name = name
         self._is_baked_in = is_baked_in
-        # Put all config fields (fetch, make, branch, etc.) in a single config block
-        self.config_block = ConfigBlock(config_data)
+        # config is a raw dict of fields (fetch, make, branch, etc.)
+        self.config = config_data
+        # environment instructions for just this package
         self.env_block_obj = EnvironmentBlock(env_data)
 
     @property
@@ -108,22 +83,26 @@ class PlanPackage:
     def env_block(self) -> EnvironmentBlock:
         return self.env_block_obj
 
-
 class PlanFile:
     def __init__(self, raw_data: Dict[str, Any]):
-        self.data = raw_data
+        self.data = raw_data or {}
+
+        # Ensure 'global' sub-dict
         if "global" not in self.data:
             self.data["global"] = {}
-        if "packages" not in self.data:
+
+        # Ensure 'packages' is a list
+        if "packages" not in self.data or not isinstance(self.data["packages"], list):
             self.data["packages"] = []
 
-        # Ensure there's a config sub-block in global
+        # Ensure there's a 'config' in global
         if "config" not in self.data["global"]:
             self.data["global"]["config"] = {
                 "build_threads": 4,
                 "cxx_standard": 17
             }
-        # Similarly ensure there's an environment sub-block in global
+
+        # Ensure there's an 'environment' in global
         if "environment" not in self.data["global"]:
             self.data["global"]["environment"] = []
 
@@ -140,88 +119,96 @@ class PlanFile:
         with open(filename, "w", encoding="utf-8") as f:
             yaml_rt.dump(self.data, f)
 
-    def global_config_block(self) -> ConfigBlock:
-        return ConfigBlock(self.data["global"]["config"])
+    def global_config(self) -> Dict[str, Any]:
+        """
+        Return the raw dict for global config (instead of a ConfigBlock).
+        """
+        return self.data["global"]["config"]
 
     def get_global_env_actions(self) -> List[GeneratorStep]:
         block = EnvironmentBlock(self.data["global"]["environment"])
         return block.parse()
 
-
     def packages(self) -> List[PlanPackage]:
         """
         Parse the 'packages' array into a list[PlanPackage].
         Each item can be:
-          1) A string (baked-in), possibly with @version. e.g. "geant4@v11.03"
-          2) A dictionary of form { "mydep": { fetch:..., make:..., environment: [...], etc. }}
+          - A string: "root" or "geant4@v11.03"
+          - A dict: { "mydep": { fetch:..., environment:..., etc. } }
         """
-        packages = self.data["packages"] if self.data["packages"] else []
+        pkg_list = self.data["packages"]
         result: List[PlanPackage] = []
 
-        for item in packages:
+        for item in pkg_list:
             if isinstance(item, str):
                 # e.g. "root" or "geant4@v11.03"
                 pkg_name = item
                 version_part = ""
-
-                # If we have "root@v6.32.0", parse out the version
                 if '@' in pkg_name:
                     parts = pkg_name.split('@', 1)
                     pkg_name = parts[0]
                     version_part = parts[1]
 
-                # Store version in config_data if present
                 config_data = {}
                 if version_part:
                     config_data["version"] = version_part
 
-                d = PlanPackage(
+                p = PlanPackage(
                     name=pkg_name,
                     config_data=config_data,
                     env_data=[],
                     is_baked_in=True
                 )
-                result.append(d)
+                result.append(p)
 
             elif isinstance(item, dict):
-                # e.g. { "my_packet": {...} }
+                # e.g. { "mylib": { fetch:..., environment: [...], etc. } }
                 if len(item) != 1:
                     raise ValueError(
                         f"Malformed dependency entry. Must have exactly one top-level key.\n"
                         f"Invalid entry: {item}"
                     )
-
                 dep_name, dep_config = next(iter(item.items()))
                 if not isinstance(dep_config, dict):
                     raise ValueError(
                         f"Invalid config for dependency '{dep_name}'. Must be a dictionary.\n"
                         f"Got: {type(dep_config)}"
                     )
-
                 env_data = dep_config.get("environment", [])
-                tmp = dict(dep_config)  # shallow copy
-                tmp.pop("environment", None)
+                # shallow copy so we can remove environment key
+                tmp_config = dict(dep_config)
+                tmp_config.pop("environment", None)
 
-                d = PlanPackage(
+                p = PlanPackage(
                     name=dep_name,
-                    config_data=tmp,
+                    config_data=tmp_config,
                     env_data=env_data,
                     is_baked_in=False
                 )
-                result.append(d)
-
+                result.append(p)
             else:
-                # Unknown type
-                raise ValueError(f"Invalid package entry type: {type(item)}. Entry: {item}")
+                raise ValueError(f"Invalid package entry: {item} (type {type(item)})")
 
         return result
 
-
     def has_package(self, name: str) -> bool:
-        return any(d.name == name for d in self.packages())
+        """
+        True if a package with name 'name' is in the plan.
+        """
+        return any(p.name == name for p in self.packages())
 
     def find_package(self, name: str) -> Optional[PlanPackage]:
-        for d in self.packages():
-            if d.name == name:
-                return d
+        for p in self.packages():
+            if p.name == name:
+                return p
         return None
+
+    def add_package(self, new_entry: Any):
+        """
+        Append a new package item (string or dict) to self.data["packages"].
+        Must remain a list. Then the user can call save() to persist.
+        """
+        if not isinstance(self.data["packages"], list):
+            self.data["packages"] = []
+
+        self.data["packages"].append(new_entry)

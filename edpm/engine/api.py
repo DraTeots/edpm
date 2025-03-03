@@ -155,8 +155,8 @@ class EdpmApi:
                 return
 
         # Merge global + local config
-        global_cfg = dict(self.plan.global_config_block().data)
-        local_cfg = dict(dep_obj.config_block.data)
+        global_cfg = dict(self.plan.global_config())
+        local_cfg = dict(dep_obj.config)
         combined_config = {**global_cfg, **local_cfg}
 
         # we need to generate env_bash_file
@@ -222,7 +222,7 @@ class EdpmApi:
         3. Current working directory
         """
         # Get explicit config value
-        explicit_path = self.plan.global_config_block().get(config_key)
+        explicit_path = self.plan.global_config().get(config_key)
 
         if explicit_path:
             return os.path.abspath(explicit_path)
@@ -240,19 +240,19 @@ class EdpmApi:
         out_key = f"env_{shell_type}_out"
         default_out = f"env.{'sh' if shell_type == 'bash' else 'csh'}"
 
-        in_path = self.plan.global_config_block().get(in_key)
+        in_path = self.plan.global_config().get(in_key)
         out_path = self._resolve_output_path(out_key, default_out)
         return in_path, out_path
 
     def get_cmake_toolchain_paths(self) -> tuple:
         """Get (input_path, output_path) for CMake toolchain"""
-        in_path = self.plan.global_config_block().get("cmake_toolchain_in")
+        in_path = self.plan.global_config().get("cmake_toolchain_in")
         out_path = self._resolve_output_path("cmake_toolchain_out", "EDPMToolchain.cmake")
         return in_path, out_path
 
     def get_cmake_presets_paths(self) -> tuple:
         """Get (input_path, output_path) for CMake presets"""
-        in_path = self.plan.global_config_block().get("cmake_presets_in")
+        in_path = self.plan.global_config().get("cmake_presets_in")
         out_path = self._resolve_output_path("cmake_presets_out", "CMakePresets.json")
         return in_path, out_path
 

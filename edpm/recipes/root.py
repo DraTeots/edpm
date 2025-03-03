@@ -70,111 +70,19 @@ class RootRecipe(ComposedRecipe):
             'cxx_standard': '17',
             'cmake_build_type': 'RelWithDebInfo',
             # If user doesn't override, we'll set them in preconfigure().
-            'cmake_flags': "",
+            'cmake_flags': "-Wno-dev",
+                "-Droot7=ON "
+                "-Dgdml=ON "
+                "-Dxrootd=OFF "
+                "-Dmysql=OFF "
+                "-Dpythia6=OFF "
+                "-Dpythia6_nolink=OFF "
+                "-Dpythia8=OFF "
+                "-Dhttp=ON "
             'build_threads': 4,
         }
         super().__init__(name='root', config=config)
 
-    def preconfigure(self):
-        """
-        Overriding preconfigure step to:
-        1. Enforce cxx_standard >= 14
-        2. Find Python
-        3. Build up specialized cmake flags for ROOT
-        """
-        # 1) Check cxx_standard
-        cxx_std = int(self.config.get('cxx_standard', 17))
-        if cxx_std < 14:
-            raise ValueError(
-                "ERROR: cxx_standard must be >= 14 to build ROOT.\n"
-                "Please set it in plan or via 'edpm config global cxx_standard=14'."
-            )
-
-        # 2) Find python
-        python_path = self._find_python()
-        python_flag = ""
-        if python_path:
-            python_flag = f"-DPYTHON_EXECUTABLE={python_path}"
-        # 3) Combine your advanced flags
-        # You can add more or disable modules as needed
-        root_flags = [
-            "-Wno-dev",
-            f"-DCMAKE_CXX_STANDARD={cxx_std}",
-            f"-DCMAKE_BUILD_TYPE={self.config['cmake_build_type']}",
-            "-Droot7=ON",
-            "-Dgdml=ON",
-            "-Dxrootd=OFF",
-            "-Dmysql=OFF",
-            "-Dpythia6=OFF",
-            "-Dpythia6_nolink=OFF",
-            "-Dpythia8=OFF",
-            "-Dhttp=ON",
-        ]
-        if python_flag:
-            root_flags.append(python_flag)
-
-        # Merge any user-provided custom flags
-        user_flags = self.config.get('cmake_custom_flags', "")
-        if user_flags:
-            root_flags.append(user_flags)
-
-        # Convert to a single string, appended to the standard 'cmake_flags'
-        joined_flags = " ".join(root_flags)
-        # The ComposedRecipe’s CmakeMaker typically looks at `config['cmake_flags']`.
-        self.config['cmake_flags'] = f"{self.config['cmake_flags']} {joined_flags}"
-
-    def _find_python(self):
-        """
-        Attempt to find a 'python3', fallback to python.
-        """
-        candidates = ["python3", "python"]
-        for prog in candidates:
-            try:
-                path = check_output(["which", prog]).decode().strip()
-                if path:
-                    return path
-            except Exception:
-                pass
-        return None
-
-    def fetch(self):
-        """
-        Overrides default fetch to implement a shallow git clone, if requested,
-        and avoid re-downloading if source_path is nonempty.
-        """
-        source_path = self.config.get('source_path', "")
-        if source_path and is_not_empty_dir(source_path):
-            # Already cloned or existing
-            return
-
-        # Build the clone command ourselves to use `--depth 1` if shallow
-        shallow_flag = ""
-        if self.config.get('shallow', False):
-            shallow_flag = "--depth 1"
-
-        branch = self.config.get('branch', 'master')
-        url = self.config.get('url')
-        clone_cmd = f'git clone {shallow_flag} -b {branch} {url} "{source_path}"'
-
-        # Make sure source dir exists
-        mkpath(source_path)
-        # Actually run the clone
-        from edpm.engine.commands import run
-        run(clone_cmd)
-
-    def patch(self):
-        """
-        If you have any patch steps, place them here.
-        Otherwise, skip.
-        """
-        pass
-
-    def post_install(self):
-        """
-        Any post-install steps after 'cmake --build . --target install'.
-        Typically none, but you can add if needed.
-        """
-        pass
 
     @staticmethod
     def gen_env(data):

@@ -15,7 +15,7 @@ TEMPLATE_CONTENT = """\
 
 # Global configuration block
 global:
-  # cxx_standard: 17      # e.g. 17 or 20 for C++
+  # cxx_standard: 20      # e.g. 17, 20, 23 for C++
   # build_threads: 8      # Number of parallel build threads
   environment:
     # - set:

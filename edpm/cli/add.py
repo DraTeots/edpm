@@ -118,5 +118,5 @@ def add_command(ctx, raw_name, fetch, make, branch, location, url, option_list):
     api.plan.data["packages"].append(new_entry)
     api.plan.save(api.plan_file)
 
-    mprint("<green>Added dependency</green> '{}' to the plan.\nCheck '{}' to see or edit details.",
+    mprint("<green>Added dependency</green> '{}' to the plan.\nCheck plan-file to see or edit details:\n{}",
            raw_name, api.plan_file)
