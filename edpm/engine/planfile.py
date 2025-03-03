@@ -153,7 +153,8 @@ class PlanFile:
         Parse the 'packages' array into a list[Dependency].
         Each item can be a string (baked-in) or a dictionary (custom).
         """
-        deps_list = self.data["packages"]
+        deps_list = self.data["packages"] if self.data["packages"] else []
+
         result: List[Dependency] = []
 
         for item in deps_list:
