@@ -78,7 +78,7 @@ class ConfigBlock:
         return key in self.data
 
 
-class Dependency:
+class PlanPackage:
     """
     Represents one dependency from the plan.
 
@@ -148,71 +148,79 @@ class PlanFile:
         return block.parse()
 
 
-    def packages(self) -> List[Dependency]:
+    def packages(self) -> List[PlanPackage]:
         """
-        Parse the 'packages' array into a list[Dependency].
-        Each item can be a string (baked-in) or a dictionary (custom).
+        Parse the 'packages' array into a list[PlanPackage].
+        Each item can be:
+          1) A string (baked-in), possibly with @version. e.g. "geant4@v11.03"
+          2) A dictionary of form { "mydep": { fetch:..., make:..., environment: [...], etc. }}
         """
-        deps_list = self.data["packages"] if self.data["packages"] else []
+        packages = self.data["packages"] if self.data["packages"] else []
+        result: List[PlanPackage] = []
 
-        result: List[Dependency] = []
-
-        for item in deps_list:
+        for item in packages:
             if isinstance(item, str):
-                # baked-in recipe, e.g. "root" or "geant4"
-                d = Dependency(
-                    name=item,
-                    config_data={},  # no special config
+                # e.g. "root" or "geant4@v11.03"
+                pkg_name = item
+                version_part = ""
+
+                # If we have "root@v6.32.0", parse out the version
+                if '@' in pkg_name:
+                    parts = pkg_name.split('@', 1)
+                    pkg_name = parts[0]
+                    version_part = parts[1]
+
+                # Store version in config_data if present
+                config_data = {}
+                if version_part:
+                    config_data["version"] = version_part
+
+                d = PlanPackage(
+                    name=pkg_name,
+                    config_data=config_data,
                     env_data=[],
                     is_baked_in=True
                 )
                 result.append(d)
+
             elif isinstance(item, dict):
-                # e.g. { "my_packet": { fetch:..., make:..., environment: [...], etc. } }
-                # or could be multiple keys if user wrote a short form,  but we assume exactly one top-level key: the name
-                # Validate dictionary format for named packages
+                # e.g. { "my_packet": {...} }
                 if len(item) != 1:
                     raise ValueError(
-                        f"Malformed dependency entry. Each dependency object must have exactly one top-level key.\n"
-                        f"Invalid entry: {item}\n"
-                        f"Expected format: {{ <dependency-name>: {{ <config-options> }} }}\n"
-                        f"Example: {{ 'myapp': {{ 'recipe': 'cmake', 'repo': 'https://...' }} }}"
+                        f"Malformed dependency entry. Must have exactly one top-level key.\n"
+                        f"Invalid entry: {item}"
                     )
 
-                # Extract dependency name and config
                 dep_name, dep_config = next(iter(item.items()))
-
-                # Validate config is a dictionary
                 if not isinstance(dep_config, dict):
                     raise ValueError(
-                        f"Invalid configuration for dependency '{dep_name}'. "
-                        f"Expected dictionary of settings, got {type(dep_config)}.\n"
-                        f"Full entry: {item}"
+                        f"Invalid config for dependency '{dep_name}'. Must be a dictionary.\n"
+                        f"Got: {type(dep_config)}"
                     )
 
-                # environment might exist or not
                 env_data = dep_config.get("environment", [])
-                # separate out environment from the rest
                 tmp = dict(dep_config)  # shallow copy
                 tmp.pop("environment", None)
 
-                d = Dependency(
+                d = PlanPackage(
                     name=dep_name,
                     config_data=tmp,
-                    env_data=dep_config,
+                    env_data=env_data,
                     is_baked_in=False
                 )
                 result.append(d)
+
             else:
-                # unknown type
-                pass
+                # Unknown type
+                raise ValueError(f"Invalid package entry type: {type(item)}. Entry: {item}")
 
         return result
+
 
     def has_package(self, name: str) -> bool:
         return any(d.name == name for d in self.packages())
 
-    def find_package(self, name: str) -> Optional[Dependency]:
+    def find_package(self, name: str) -> Optional[PlanPackage]:
         for d in self.packages():
             if d.name == name:
                 return d

@@ -41,7 +41,7 @@ global:
 The `packages:` key is an array. Each array item describes **one** dependency.  
 Each item can be:
 
-1. A **string** naming a known built-in recipe (example: `"root"`, `"geant4"`, `"clhep"`)
+1. A **string** naming a known built-in recipe, possibly with name@version (example: `"root"`, `"clhep", `"geant4@v11.03"``)
 2. A **dictionary** that uses a custom name (e.g. `my_packet:`) or direct `'name:'` to define a 
    **composed** or custom recipe with fields like `fetch: ...`, `make: ...`, etc.
 
@@ -49,21 +49,29 @@ Each item can be:
 
 ## 2. Minimal vs. Detailed Dependencies
 
-### 2.1 Minimal Dependency (String Form)
+### 2.1 Minimal package description (String Form)
 
-If the user wants to install a well-known pre-baked recipe:
+If the user wants to install a package, that edpm has a pre-defined recipe for:
 
 ```yaml
 packages:
-  - root
-  - geant4
+  - root  
   - clhep
+  - geant4@v11.03
 ```
 
 In this scenario, EDPM will interpret these strings (`"root"`, `"geant4"`, `"clhep"`) as references
 to **specialized** classes (e.g. `RootRecipe`, `Geant4Recipe`, etc.).
 
-### 2.2 Detailed Dependency (Dictionary Form)
+For convenience, users can include version string after the `@` (e.g., `geant4@v11.03`).
+It is up to the Recipe how to interpret the version. Below are the examples:
+
+- For git+cmake recipes, `@version` makes to use the particular branch when cloning the repo.
+`"geant4@v11.03"` should clone the `v11.03` tag instead of fetching the default recipe branch.
+- For custom recipes it might come as part of a download link. 
+
+
+### 2.2 Detailed package description (Dictionary Form)
 
 When the user needs more control, or wants to define a new package with custom fetch/build, they can
 create an entry that is a dictionary of the form:

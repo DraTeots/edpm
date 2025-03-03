@@ -204,3 +204,4 @@ env\.sh
 .idea/
 
 **/repomix-output*
+.qodo

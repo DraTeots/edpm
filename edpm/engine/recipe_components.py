@@ -53,6 +53,14 @@ class GitFetcher(IFetcher):
             is_main_branch = self.config.get("branch", "") not in ["master", "main"]
             self.config["git_clone_depth"] = "--depth 1" if is_main_branch else ""
 
+        version = self.config.get("version", "")
+        branch = self.config.get("branch", "")
+        if version:
+            # e.g. treat version as git branch or tag
+            if branch:
+                print(f"'version'='{version}' is explicitly set and overrides 'branch'='{branch}' (this might be desired)")
+            self.config["branch"] = version
+
         # For convenience, build a 'clone_command' string
         self.config["clone_command"] = (
             "git clone {git_clone_depth} -b {branch} {url} {source_path}"

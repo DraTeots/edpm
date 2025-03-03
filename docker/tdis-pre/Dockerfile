@@ -58,11 +58,13 @@ ENV PATH "$PATH:/home/tdisuser/.local/bin"
 ENV LC_ALL=C.UTF-8
 ENV LANG=C.UTF-8
 
+WORKDIR ${APP_ROOT}
+
 # Install EDPM v3 and set the top_dir
 RUN python3 -m pip install --user --upgrade --force-reinstall --break-system-packages ruamel.yaml click appdirs edpm
 
 # Initialize a brand-new EDPM plan (plan.edpm.yaml) if none exists
-RUN cd ${APP_ROOT} && edpm init --force && edpm --top-dir=${APP_ROOT}
+RUN edpm init --force && edpm --top-dir=${APP_ROOT}
 
 # Configure global settings
 RUN edpm config global cxx_standard=20 &&\
@@ -71,8 +73,7 @@ RUN edpm config global cxx_standard=20 &&\
 #
 # 1) ROOT
 #
-RUN edpm add root && \
-    edpm config root branch=${VERSION_CERN_ROOT} && \
+RUN edpm add root@${VERSION_CERN_ROOT} && \
     edpm config root cmake_custom_flags="-Dcuda=OFF -Dcudnn=OFF -Dtmva-gpu=OFF" && \
     edpm install -j${BUILD_THREADS} root && \
     edpm clean root

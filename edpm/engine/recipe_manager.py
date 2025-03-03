@@ -54,7 +54,7 @@ class RecipeManager:
 
     def create_recipe(self, recipe_name, config: Dict[str, any]):
         """
-        dep_obj is a planfile.Dependency instance.
+        dep_obj is a planfile.PlanPackage instance.
         config is the merged config dict (global + local).
         Return a `Recipe` object (either baked-in or composed).
         """
