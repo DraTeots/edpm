@@ -1,116 +1,95 @@
-import click
 import os
-from edpm.engine.output import markup_print as mprint
+import click
+
 from edpm.engine.api import EdpmApi
+from edpm.engine.output import markup_print as mprint
 
-# Maps a recipe type to a list of (argument_name, config_key) pairs
-# telling us how to interpret positional arguments.
-#
-# Example:
-#   "manual": [("location", "location")]
-#     -> For "manual", the first positional argument is stored in config["location"].
-#
-#   "git-cmake": [("repo", "repo_address")]
-#     -> For "git-cmake", the first positional argument is stored in config["repo_address"].
-# You can add more advanced logic or multiple arguments if needed.
-RECIPE_POSITIONAL_MAP = {
-    "manual": [("location", "location")],
-    "git-cmake": [("repo", "repo_address")],
-    # Add more if needed:
-    # "git-automake": [("repo", "repo_address")]
-    # "pip-install":  [("package", "package_name")]
-}
-
-@click.command()
-@click.option("-t", "--type", "recipe_type", default="",
-              help="The recipe type (e.g. manual, git-cmake). If omitted, the first argument is used as both 'name' and 'recipe' if recognized.")
-@click.option("--branch", default="", help="Shortcut for config.branch=... (common for git-based recipes).")
-@click.option("--location", default="", help="Shortcut for config.location=... (common for manual recipes).")
-@click.option("--repo", default="", help="Shortcut for config.repo_address=... (common for git-based recipes).")
-@click.option("--option", "option_list", multiple=True, help="Arbitrary key=value pairs that go into config. E.g. --option cxx_standard=20.")
+@click.command("add", help="Add a new dependency entry to the plan file.")
+@click.option("--fetch", default="", help="Fetcher type or URL (git/tarball/filesystem or autodetect from URL).")
+@click.option("--make", default="", help="Maker type (cmake/autotools/manual/custom).")
+@click.option("--branch", default="", help="Branch/tag (main, master, v1.2, etc.) if git fetcher.")
+@click.option("--location", default="", help="Location/path if manual or filesystem fetcher.")
+@click.option("--url", default="", help="Repo or tarball URL if fetch=git or fetch=tarball.")
+@click.option("--option", "option_list", multiple=True,
+              help="Arbitrary key=value pairs to add under the dependency config. E.g. --option cxx_standard=17.")
 @click.argument("name", required=True)
-@click.argument("extra_args", nargs=-1, required=False)
 @click.pass_context
-def add(ctx, recipe_type, branch, location, repo, option_list, name, extra_args):
+def add_command(ctx, name, fetch, make, branch, location, url, option_list):
     """
-    Add a new dependency to the EDPM plan without installing it.
+    Updates the plan.edpm.yaml "packages" list to include a new entry.
+    If no extra flags and 'name' is a known built-in recipe, we add it as a simple '- name'.
+    Otherwise, we create a dictionary entry of the form:
 
-    Examples:
-      edpm add root
-         -> Adds a 'root' recipe with name='root'.
+        - name:
+            fetch: ...
+            make: ...
+            <other fields>
 
-      edpm add --type=manual my_root /home/user/root45
-         -> Adds a 'manual' recipe named 'my_root', config.location=/home/user/root45
-
-      edpm add --type=git-cmake fmt https://github.com/fmtlib/fmt.git --branch=11.1.3
-         -> Adds a 'git-cmake' recipe named 'fmt', config.repo_address=..., config.branch=11.1.3
     """
-    api = ctx.obj
-    assert isinstance(api, EdpmApi)
+    api = ctx.obj  # Or however you typically instantiate the EdpmApi
 
-    # 2) If --type not given, we guess the user typed something like "root",
-    #    meaning name="root" + recipe="root".
-    #    We'll check if "root" is recognized by the manager as a known recipe.
-    if not recipe_type:
-        # If 'name' is recognized as a known recipe name:
-        known = api.recipe_manager.recipes_by_name.keys()
-        if name in known:
-            recipe_type = name
-        else:
-            mprint(
-                "<red>No --type provided and '{}' is not a known recipe name.</red>\n"
-                "Please specify, e.g. '--type=manual' or another known type.",
-                name
-            )
-            return
 
-    # 3) Build the new dependency data
-    new_dep = {
-        "recipe": recipe_type,  # e.g. "manual", "git-cmake", "root", etc.
-        "name": name,
-        "config": {},
-        "environment": [],
-        "require": {}
-    }
-
-    # 4) Map positional arguments if any
-    #    e.g. for "manual", we expect one arg => config["location"] = that arg
-    #         for "git-cmake", we expect one arg => config["repo_address"] = that arg
-    recipe_pos_map = RECIPE_POSITIONAL_MAP.get(recipe_type, [])
-    if recipe_pos_map:
-        # For each (arg_label, config_key) pair, if we have a positional arg, assign it
-        for i, (arg_label, cfg_key) in enumerate(recipe_pos_map):
-            if i < len(extra_args):
-                new_dep["config"][cfg_key] = extra_args[i]
-        # If user gave more than what's needed, you might store them in a leftover or warn them
-
-    # 5) Apply shortcut flags: --branch, --location, --repo
-    if branch:
-        new_dep["config"]["branch"] = branch
-    if location:
-        new_dep["config"]["location"] = location
-    if repo:
-        new_dep["config"]["repo_address"] = repo
-
-    # 6) Parse --option multiple key=value pairs
-    #    e.g. --option cxx_standard=20 => new_dep["config"]["cxx_standard"] = "20"
-    for opt in option_list:
-        if "=" in opt:
-            k, v = opt.split("=", 1)
-            new_dep["config"][k.strip()] = v.strip()
-        else:
-            mprint("<red>Ignoring malformed --option '{}'. Expected key=value.</red>", opt)
-
-    # 7) Check if name already exists in the plan
+    # 1) Check if 'name' already exists in the plan
     if api.plan.has_package(name):
-        mprint("<red>Error:</red> A dependency named '{}' already exists in the plan.", name)
-        return
+        mprint("<red>Error:</red> A package named '{}' already exists in the plan.", name)
+        raise click.Abort()
 
-    # 8) Actually add it to the plan
-    api.plan.data["packages"].append(new_dep)
+    # 2) Decide if we can add this as a simple string ("- root") or need a dict
+    is_known_recipe = name in api.recipe_manager.recipes_by_name
+    has_any_flags = any([fetch, make, branch, location, url, option_list])
 
-    # 9) Save the plan
+    # If no flags, no extra config, and 'name' is a known built-in recipe => just "- name"
+    if (not has_any_flags) and is_known_recipe:
+        new_entry = name  # e.g.   packages: [ - root ]
+    else:
+        # Otherwise produce a dictionary entry:   packages: [ - name: {...} ]
+        new_entry = {name: {}}
+        config_block = new_entry[name]  # fill in fetch/make/etc.
+
+        # Populate fetch
+        if fetch:
+            config_block["fetch"] = fetch
+        elif url:
+            # if user only gave --url, guess the fetcher
+            # e.g. if ends with ".git", we treat it as "git"
+            # if ends with ".tar.gz", treat it as "tarball"
+            # or fallback to "git" if user says so.
+            if url.endswith(".git"):
+                config_block["fetch"] = "git"
+            elif url.endswith(".tar.gz") or url.endswith(".tgz"):
+                config_block["fetch"] = "tarball"
+            else:
+                config_block["fetch"] = "filesystem"  # or guess
+        # If user gave neither 'fetch' nor 'url', you could leave it empty or default to manual.
+
+        # Populate 'url' or 'location' field if provided
+        if url:
+            config_block["url"] = url
+        if location:
+            config_block["location"] = location
+
+        # Populate make
+        if make:
+            config_block["make"] = make
+
+        # Branch
+        if branch:
+            config_block["branch"] = branch
+
+        # Additional options
+        for opt in option_list:
+            if "=" in opt:
+                k, v = opt.split("=", 1)
+                config_block[k.strip()] = v.strip()
+            else:
+                mprint("<yellow>Warning:</yellow> Ignoring malformed --option '{}'; expected key=value.", opt)
+
+    # 3) Append the new entry to the plan
+    api.plan.data["packages"].append(new_entry)
+
+    # 4) Save the plan
     api.plan.save(api.plan_file)
 
-    mprint("<green>Added dependency '{}</green>' with recipe='{}'.\nCheck plan.edpm.yaml to customize further.",
-           name, recipe_type)
+    # 5) Inform the user
+    mprint("<green>Added dependency</green> '{}' to the plan.\nCheck '{}' to see or edit details.",
+           name, api.plan_file)

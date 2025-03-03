@@ -17,7 +17,8 @@ global:
     #     PYTHONPATH: "/usr/local/global/python"
 
 # Dependencies array
-dependencies:
+packages:
+
   # Example 1: A pre-installed dependency ("manual" recipe)
   # - recipe: manual
   #   name: local_root

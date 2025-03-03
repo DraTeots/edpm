@@ -1,12 +1,3 @@
-# cli/init.py
-
-import os
-import click
-
-from edpm.engine.api import EdpmApi
-from edpm.engine.output import markup_print as mprint
-
-TEMPLATE_CONTENT = """\
 # EDPM Manifest Template
 # ----------------------
 # This file defines:
@@ -61,32 +52,3 @@ packages:
 
   # require:
   #   apt: [ libeigen3-dev ]
-"""
-
-@click.command()
-@click.option("--force", is_flag=True, default=False, help="Overwrite existing plan.edpm.yaml if it already exists.")
-@click.pass_context
-def init(ctx, force):
-    """
-    Creates a minimal EDPM plan template (plan.edpm.yaml)
-    in the current directory with commented placeholders.
-    """
-    edpm_api = ctx.obj
-    # Ensure plan & lock are loaded
-    assert isinstance(edpm_api, EdpmApi)
-    target_file = edpm_api.plan_file
-
-
-    if os.path.isfile(target_file) and not force:
-        mprint("<red>File '{}' already exists.</red> Use --force to overwrite.", target_file)
-        return
-
-    with open(target_file, "w", encoding="utf-8") as f:
-        f.write(TEMPLATE_CONTENT)
-
-    mprint("<green>Created minimal EDPM plan:</green> {}", target_file)
-    mprint(
-        "You can now edit '{}' to define your dependencies or global config.\n"
-        "Then run 'edpm install' or 'edpm config' to proceed.",
-        target_file
-    )

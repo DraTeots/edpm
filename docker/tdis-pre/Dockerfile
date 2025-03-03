@@ -17,9 +17,9 @@ ARG VERSION_ACTS=v37.4.0
 ARG VERSION_PODIO=v01-01
 ARG VERSION_JANA2=v2.4.0
 
-ENV EIC_ROOT /eic
-ENV CONTAINER_ROOT /container
-ENV APP_ROOT /container/app
+ENV EIC_ROOT=/eic
+ENV CONTAINER_ROOT=/container
+ENV APP_ROOT=/container/app
 
 SHELL ["/bin/bash", "-c"]
 
@@ -61,7 +61,7 @@ ENV LC_ALL=C.UTF-8
 ENV LANG=C.UTF-8
 
 # Install EDPM v3 and set the top_dir
-RUN python3 -m pip install --user --upgrade --force-reinstall --break-system-packages click appdirs edpm &&\
+RUN python3 -m pip install --user --upgrade --force-reinstall --break-system-packages ruamel.yaml click appdirs edpm &&\
     edpm --top-dir=/container/app &&\
     edpm
 

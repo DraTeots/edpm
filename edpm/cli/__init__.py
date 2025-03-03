@@ -22,7 +22,7 @@ from edpm.cli.clean import clean_command
 from edpm.cli.info import info as info_command
 from edpm.cli.config import config as config_command
 from edpm.cli.init import init as init_command
-from edpm.cli.add import add as add_command
+from edpm.cli.add import add_command
 
 def print_first_time_message():
     mprint(
