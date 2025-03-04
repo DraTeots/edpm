@@ -23,6 +23,8 @@ ENV APP_ROOT=/container/app
 
 ARG DEBIAN_FRONTEND=noninteractive
 
+ENV EDPM_PLAN_FILE=${APP_ROOT}/edpm-plan.yaml
+ENV EDPM_LOCK_FILE=${APP_ROOT}/edpm-plan-lock.yaml
 
 # Create a user 'tdisuser' with sudo privileges
 RUN useradd -m -G sudo tdisuser

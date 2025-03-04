@@ -63,7 +63,7 @@ packages:
   #   apt: [ libeigen3-dev ]
 """
 
-@click.command("command")
+@click.command("init")
 @click.option("--force", is_flag=True, default=False, help="Overwrite existing plan.edpm.yaml if it already exists.")
 @click.pass_context
 def init_command(ctx, force):
