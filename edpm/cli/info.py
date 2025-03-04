@@ -4,10 +4,10 @@ import click
 from edpm.engine.output import markup_print as mprint
 from edpm.engine.api import EdpmApi
 
-@click.command()
+@click.command("info")
 @click.option('--cmake', 'flag_cmake', is_flag=True, default=False, help="Show info in terms of CMake flags (example).")
 @click.pass_context
-def info(ctx, flag_cmake):
+def info_command(ctx, flag_cmake):
     """
     Prints information about the EDPM state.
     e.g. which packages are installed, top_dir, etc.

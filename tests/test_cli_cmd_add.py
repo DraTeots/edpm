@@ -137,3 +137,22 @@ def test_add_known_recipe_with_flags(runner, temp_plan, mock_recipe_manager):
         data = YAML().load(f)
     pkgs = data["packages"]
     assert len(pkgs) == 1
+
+def test_add_with_existing(runner, temp_plan, mock_recipe_manager):
+    """
+    Test 'edpm add --existing root /path/to/installation'
+    """
+    api, plan_path, _ = temp_plan
+    api.load_all()
+
+    result = runner.invoke(cli, ["add", "root", "--existing", "/path/to/existing"], obj=api)
+    assert result.exit_code == 0
+    assert "Added dependency 'root' to the plan." in result.output
+
+    # Verify the plan
+    with open(plan_path, "r", encoding="utf-8") as f:
+        data = YAML().load(f)
+    packages = data["packages"]
+    assert len(packages) == 1
+    assert "root" in packages[0]
+    assert packages[0]["root"]["existing"] == "/path/to/existing"

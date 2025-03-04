@@ -1,85 +1,101 @@
 import click
+import os
+import shutil
 
 from edpm.engine.api import EdpmApi
 from edpm.engine.output import markup_print as mprint
 
 
-_help_option_db = "Removes only DB record"
-_help_option_all = "Removes DB record and packet folder from disk"
-_help_option_auto = "Removes from DB and disk if(!) the packet is owned by edpm"
+_help_option_lock = "Removes only lock file record without touching installation"
+_help_option_all = "Removes lock record and package folder from disk"
+_help_option_auto = "Removes from lock and disk if(!) the package is owned by edpm"
 
 
-# @click.group(invoke_without_command=True)
-@click.command()
-@click.argument('packet_name', nargs=1, metavar='<packet-name>')
-@click.argument('install_paths', nargs=-1, metavar='<path>')
-@click.option('--db', 'mode', flag_value='db', help=_help_option_db)
+@click.command("rm")
+@click.argument('package_name', nargs=1, metavar='<package-name>')
+@click.option('--lock', 'mode', flag_value='lock', help=_help_option_lock)
 @click.option('--all', 'mode', flag_value='all', help=_help_option_all)
 @click.option('--auto', 'mode', flag_value='auto', help=_help_option_auto, default=True)
 @click.pass_context
-def rm(ctx, packet_name, install_paths, mode):
-    """Removes a packet.
-    By default deletes record from edpm DB and the disk folders if the packet is 'owned' by edpm.
+def rm_command(ctx, package_name, mode):
+    """Removes a package.
+    By default, deletes record from edpm lock file and the disk folders if the package is 'owned' by edpm.
 
     Usage:
-        edpm rm <packet-name>         # removes active install of the packet
-        edpm rm <packet-name> <path>  # removes the install with the path
+        edpm rm <package-name>         # removes the package
+        edpm rm <package-name> --lock  # removes only from lock file
+        edpm rm <package-name> --all   # forces removal of all files even for non-owned packages
 
     """
-    from edpm.engine.db import INSTALL_PATH, IS_OWNED, SOURCE_PATH, BUILD_PATH
-    ectx = ctx.obj
-    assert isinstance(ectx, EdpmApi)
+    api = ctx.obj
+    assert isinstance(api, EdpmApi)
 
-    # We need DB ready for this cli command
-    ectx.ensure_db_exists()
+    # Ensure lock file exists
+    api.ensure_lock_exists()
 
-    # Check that the packet name is from known packets
-    ectx.ensure_installer_known(packet_name)
+    # Load plan and lock if not already loaded
+    if not api.plan or not api.lock:
+        api.load_all()
 
-    if not install_paths:
-        install_data = ectx.db.get_active_install(packet_name)
-        if not install_data:
-            print("No active installation data found for the packet {}".format(packet_name))
-            raise click.Abort()
-        else:
-            print("No path provided. <b>Using 'active' install</b>")
-    else:
-        install_path = install_paths[0]     # todo multiple paths
-        install_data = ectx.db.get_install(packet_name, install_path)
-        if not install_data:
-            print("No active installation data found for the packet {} and path:\n{}"
-                  .format(packet_name, install_path))
-            raise click.Abort()
+    # Check if package exists
+    if not api.plan.find_package(package_name):
+        mprint("<red>Error:</red> Package '{}' not found in the plan.", package_name)
+        raise click.Abort()
 
-    mprint("<blue><b>Removing install with path: </b></blue>")
-    mprint("  {}\n", install_data[INSTALL_PATH])
+    # Check if package is installed
+    if not api.lock.is_installed(package_name):
+        mprint("<red>Error:</red> Package '{}' is not installed.", package_name)
+        raise click.Abort()
 
-    remove_folder = False
+    # Get package data
+    package_data = api.lock.get_installed_package(package_name)
+    install_path = package_data.get("install_path", "")
+
+    mprint("<blue><b>Removing package: </b></blue> {}", package_name)
+    mprint("<blue><b>Installation path: </b></blue> {}\n", install_path)
+
+    # Determine if we should remove folders based on mode and ownership
+    remove_folders = False
     if mode == 'all':
-        remove_folder = True
-    if mode == 'auto':
-        remove_folder = install_data[IS_OWNED]
-        if not remove_folder:
-            mprint("<b>(!)</b> the packet is not 'owned' by edpm. The record is removed from DB but\n"
-                   "<b>(!)</b>you have to remove the folder manually:\n{}\n", install_data[INSTALL_PATH])
+        remove_folders = True
+    elif mode == 'auto':
+        remove_folders = package_data.get("owned", True)
+        if not remove_folders:
+            mprint("<b>(!)</b> Package is not 'owned' by edpm. The record is removed from lock file but\n"
+                   "<b>(!)</b> you have to remove the folder manually:\n{}\n", install_path)
 
-    ectx.db.remove_install(packet_name, install_data[INSTALL_PATH])
-    ectx.db.save()
+    # Remove package from lock file
+    api.lock.remove_package(package_name)
+    api.lock.save()
 
     # Update environment scripts
     mprint("Updating environment script files...\n")
-    ectx.save_default_bash_environ()
-    ectx.save_default_csh_environ()
+    api.save_generator_scripts()
 
-    # remove the folder
-    if remove_folder:
-        mprint("...trying to remove the folder from disk...\n")
-        from edpm.engine.commands import run
+    # Remove folders if needed
+    if remove_folders and os.path.exists(install_path):
+        mprint("Removing installation folder from disk...\n")
+        try:
+            shutil.rmtree(install_path)
+            mprint("<green>Successfully removed folder:</green> {}", install_path)
+        except Exception as e:
+            mprint("<red>Error removing folder:</red> {}", str(e))
 
-        run('rm -rf "{}"'.format(install_data[INSTALL_PATH]))
+        # Remove source and build folders if they exist
+        source_path = package_data.get("source_path", "")
+        if source_path and os.path.exists(source_path):
+            try:
+                shutil.rmtree(source_path)
+                mprint("<green>Successfully removed source folder:</green> {}", source_path)
+            except Exception as e:
+                mprint("<red>Error removing source folder:</red> {}", str(e))
 
-        if SOURCE_PATH in install_data:
-            run('rm -rf "{}"'.format(install_data[SOURCE_PATH]))
+        build_path = package_data.get("build_path", "")
+        if build_path and os.path.exists(build_path):
+            try:
+                shutil.rmtree(build_path)
+                mprint("<green>Successfully removed build folder:</green> {}", build_path)
+            except Exception as e:
+                mprint("<red>Error removing build folder:</red> {}", str(e))
 
-        if BUILD_PATH in install_data:
-            run('rm -rf "{}"'.format(install_data[BUILD_PATH]))
+    mprint("<green>Package '{}' has been removed.</green>", package_name)

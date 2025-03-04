@@ -6,7 +6,7 @@ https://github.com/eic/algorithms
 import os
 import platform
 
-from edpm.engine.generators.steps import EnvAppend
+from edpm.engine.generators.steps import EnvAppend, CmakePrefixPath
 from edpm.engine.composed_recipe import ComposedRecipe
 
 
@@ -26,6 +26,7 @@ class AlgorithmsRecipe(ComposedRecipe):
     @staticmethod
     def gen_env(data):
         path = data['install_path']
+        CmakePrefixPath(path)
 
         # On macOS, add to DYLD_LIBRARY_PATH
         if platform.system() == 'Darwin':

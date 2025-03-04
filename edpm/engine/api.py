@@ -147,6 +147,11 @@ class EdpmApi:
             mprint("<red>Error:</red> No dependency named '{}' in the plan.", dep_name)
             return
 
+        top_dir = self.top_dir
+        if not top_dir:
+            mprint("<red>No top_dir set. Please use --top-dir or define it in the lock file.</red>")
+            sys.exit(1)
+
         # If already installed and not forcing, skip
         if self.lock.is_installed(dep_name) and not force:
             ipath = self.lock.get_installed_package(dep_name).get("install_path", "")
@@ -159,21 +164,35 @@ class EdpmApi:
         local_cfg = dict(dep_obj.config)
         combined_config = {**global_cfg, **local_cfg}
 
-        # we need to generate env_bash_file
+        # we need to generate env_bash_file with what we have now
         env_gen = self.create_environment_generator()
         bash_in, bash_out = self.get_env_paths("bash")
         env_gen.save_environment_with_infile("bash", bash_in, bash_out)
 
         # save it to packet lock file info
         combined_config["env_file_bash"] = bash_out
-
-        top_dir = self.top_dir
-        if not top_dir:
-            mprint("<red>No top_dir set. Please use --top-dir or define it in the lock file.</red>")
-            sys.exit(1)
-
         combined_config["app_path"] = os.path.join(top_dir, dep_name)
 
+        # Check if this is an "existing" package
+        if "existing" in combined_config:
+            existing_path = combined_config["existing"]
+            mprint("<magenta>=========================================</magenta>")
+            mprint("<green>REFERENCING EXISTING PACKAGE</green> : <blue>{}</blue>", dep_name)
+            mprint("<magenta>=========================================</magenta>\n")
+            mprint("<blue>Existing installation at: {}</blue>", existing_path)
+
+            # Update lock file for existing package
+            self.lock.update_package(dep_name, {
+                "install_path": existing_path,
+                "built_with_config": dict(combined_config),
+                "owned": False  # Mark as not owned by EDPM
+            })
+            self.lock.save()
+
+            mprint("<green>{} referenced at {}</green>", dep_name, existing_path)
+            return
+
+        # Normal installation for non-existing packages
         mprint("<magenta>=========================================</magenta>")
         mprint("<green>INSTALLING</green> : <blue>{}</blue>", dep_name)
         mprint("<magenta>=========================================</magenta>\n")

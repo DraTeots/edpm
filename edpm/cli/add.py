@@ -10,11 +10,12 @@ from edpm.engine.output import markup_print as mprint
 @click.option("--branch", default="", help="Branch/tag (main, master, v1.2, etc.) if git fetcher.")
 @click.option("--location", default="", help="Location/path if manual or filesystem fetcher.")
 @click.option("--url", default="", help="Repo or tarball URL if fetch=git or fetch=tarball.")
+@click.option("--existing", "-e", default="", help="Path to existing package installation.")
 @click.option("--option", "option_list", multiple=True,
               help="Arbitrary key=value pairs that go into dependency config. E.g. --option cxx_standard=17.")
 @click.argument("raw_name", required=True)
 @click.pass_context
-def add_command(ctx, raw_name, fetch, make, branch, location, url, option_list):
+def add_command(ctx, raw_name, fetch, make, branch, location, url, existing, option_list):
     """
     Updates the plan.edpm.yaml "packages" list to include a new entry.
 
@@ -22,6 +23,7 @@ def add_command(ctx, raw_name, fetch, make, branch, location, url, option_list):
       edpm add root
       edpm add root@v6.32.0
       edpm add mylib --fetch=git --url=...
+      edpm add --existing root /root/installation/path
     """
     api: EdpmApi = ctx.obj
 
@@ -58,9 +60,8 @@ def add_command(ctx, raw_name, fetch, make, branch, location, url, option_list):
     # Check if it's a known recipe
     is_known_recipe = (pkg_name in api.recipe_manager.recipes_by_name)
 
-    # Consider only actual CLI flags as "any_flags"
-    # (We do NOT treat version_part as a "flag" for the logic below)
-    any_flags = any([fetch, make, branch, location, url, option_list])
+    # Consider all flags, including the new 'existing' flag
+    any_flags = any([fetch, make, branch, location, url, existing, option_list])
 
     # Decide how to store the item in 'packages'
     # 1) If known recipe, no other flags, and possibly version_part => single string
@@ -79,6 +80,10 @@ def add_command(ctx, raw_name, fetch, make, branch, location, url, option_list):
         # If we have a version from '@', store it in 'version'
         if version_part:
             config_block["version"] = version_part
+
+        # Handle --existing flag
+        if existing:
+            config_block["existing"] = existing
 
         # Populate fetch
         if fetch:

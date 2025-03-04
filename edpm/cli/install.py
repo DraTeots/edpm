@@ -5,7 +5,7 @@ import click
 from edpm.engine.output import markup_print as mprint
 from edpm.engine.api import EdpmApi  # EdpmApi is your new-based approach
 
-@click.command()
+@click.command("install")
 
 @click.option('--force', is_flag=True, default=False,
               help="Force rebuild/reinstall even if already installed.")
@@ -14,7 +14,7 @@ from edpm.engine.api import EdpmApi  # EdpmApi is your new-based approach
               help="Print what would be installed but don't actually install.")
 @click.argument('names', nargs=-1)
 @click.pass_context
-def install(ctx, names, top_dir, just_explain, force):
+def install_command(ctx, names, top_dir, just_explain, force):
     """
     Installs packages (and their dependencies) from the plan, updating the lock file.
 

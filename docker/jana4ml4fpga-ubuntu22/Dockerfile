@@ -1,10 +1,10 @@
 #
-# docker build -t eicdev/eicrecon-ubuntu22-prereq:latest .
-# docker build -t eicdev/eicrecon-ubuntu22-prereq:latest --build-arg BUILD_THREADS=24 .
-# docker push eicdev/eicrecon-ubuntu22-prereq:latest
+# docker build -t eicdev/full-stack-prereq:latest .
+# docker build -t eicdev/full-stack-prereq:latest --build-arg BUILD_THREADS=24 .
+# docker push eicdev/full-stack-prereq:latest
 #
-# docker run --rm -it --init eicdev/eicrecon-ubuntu22-prereq:latest
-# docker run --rm -it --init -p8888:8888 eicdev/eicrecon-ubuntu22-prereq:latest
+# docker run --rm -it --init eicdev/full-stack-prereq:latest
+# docker run --rm -it --init -p8888:8888 eicdev/full-stack-prereq:latest
 
 FROM ubuntu:latest
 

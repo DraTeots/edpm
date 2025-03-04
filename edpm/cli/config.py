@@ -3,10 +3,10 @@ import click
 from edpm.engine.api import EdpmApi
 from edpm.engine.output import markup_print as mprint
 
-@click.command()
+@click.command("config")
 @click.argument('name_values', nargs=-1)
 @click.pass_context
-def config(ctx, name_values):
+def config_command(ctx, name_values):
     """
     Show or set build config for 'global' or for a specific dependency.
 

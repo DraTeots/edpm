@@ -1,60 +1,52 @@
-
 import os
 import click
 
-
 from edpm.engine.api import EdpmApi, print_packets_info
-from edpm.engine.db import PacketStateDatabase
 from edpm.engine.output import markup_print as mprint
-
-# We import the version from __init__.py
 from edpm.version import version
 
 # CLI Commands from your submodules
 from edpm.cli.env import env_group
-from edpm.cli.install import install as install_group
-from edpm.cli.find import find as find_group
+from edpm.cli.install import install_command
 from edpm.cli.req import req_command
-from edpm.cli.set import set as set_command
-from edpm.cli.rm import rm as rm_command
-from edpm.cli.pwd import pwd as pwd_command
+from edpm.cli.rm import rm_command
+from edpm.cli.pwd import pwd_command
 from edpm.cli.clean import clean_command
-from edpm.cli.info import info as info_command
-from edpm.cli.config import config as config_command
-from edpm.cli.init import init as init_command
+from edpm.cli.info import info_command
+from edpm.cli.config import config_command
+from edpm.cli.init import init_command
 from edpm.cli.add import add_command
 
 def print_first_time_message():
     mprint(
         """
-The plan file doesn't exist. It might be, that you are running 'edpm' for the first time.
+No plan file found. It appears you're running 'edpm' for the first time.
 
-1. Install or check OS-managed packages:
-    > edpm init                  # To initialize plan.edpm.yaml
-    > edpm install root          # for eicrecon and its dependencies only
+Quick Start Guide:
 
-   (Use 'ubuntu' for Debian/Ubuntu, 'centos' for RHEL/CentOS, etc. 
-    Future versions may support macOS or more granularity.)
+1. Initialize a new plan file:
+   > edpm init                   # Creates plan.edpm.yaml
 
-2. By default, EDPM installs dependencies locally under './edpm-packages/' in your project. 
-   If you'd prefer a different location (e.g., on a larger disk), run:
-    > edpm --top-dir=/bigdisk/edpm
-   This path will be saved in the lock file so you don't have to specify it again.
+2. Add and install packages:
+   > edpm add clhep root         # Add a packages to the plan
+   > edpm install                # Install the packages
 
-3. (Optional) If you already have certain dependencies installed (e.g. CERN ROOT),
-   you can register their locations:
-    > edpm set root /path/to/existing/ROOT
-    > edpm set <name> <path>
+3. By default, EDPM installs packages to './edpm-packages/'. 
+   To use a different location:
+   > edpm --top-dir=/path/to/storage
+   This path is saved in the lock file for future use.
 
-   Or discover missing dependencies:
-    > edpm install eicrecon --missing --explain
+4. For pre-existing packages:
+   > edpm add --existing root /path/to/existing/installation
+   This registers external packages without reinstalling them.
 
-4. Then install all missing dependencies:
-    > edpm install eicrecon --missing
+Commands for packages:
+   > edpm config <package>       # Set custom build flags
+   > edpm pwd <package>          # Show installed package paths
+   > edpm rm <package>           # Remove a package
 
-P.S. - You can display this message at any time with --help-first.
-       - edpm GitLab: https://gitlab.com/DraTeots/edpm
-       - This message will disappear once the lock file is created or updated.
+For more help: edpm --help
+Project repository: https://gitlab.com/DraTeots/edpm
 """
     )
     click.echo()
@@ -73,15 +65,21 @@ def edpm_cli(ctx, plan, lock, top_dir):
     """
     assert isinstance(ctx, click.Context), "EdpmApi context not available."
 
-    plan_file = "plan.edpm.yaml" if not str(plan) else str(plan)
-    lock_file = "plan-lock.edpm.yaml" if not str(lock) else str(lock)
+    # Get file paths from environment variables or use defaults
+    plan_file = os.environ.get("EDPM_PLAN_FILE", "plan.edpm.yaml")
+    lock_file = os.environ.get("EDPM_LOCK_FILE", "plan-lock.edpm.yaml")
+
+    # Override with provided parameters if they exist
+    if plan:
+        plan_file = str(plan)
+    if lock:
+        lock_file = str(lock)
 
     if not os.path.isfile(plan_file) and ctx.invoked_subcommand != "init":
         print(f"Plan file does not exists (or there is no access to it): {plan_file}")
         click.echo("Running init command.")
         print_first_time_message()
         exit(1)
-
 
     api = EdpmApi(plan_file, lock_file)
     ctx.obj = api
@@ -103,26 +101,19 @@ def edpm_cli(ctx, plan, lock, top_dir):
         api.lock.top_dir = os.path.abspath(os.path.normpath(top_dir))
         api.lock.save()
 
-
-    # If no existing DB, show welcome message
-
-    # If no subcommand, print version and some DB info
+    # If no subcommand, print version and some package info
     if ctx.invoked_subcommand is None:
         mprint("<b><blue>edpm</blue></b> v{}", version)
         mprint("<b><blue>top dir :</blue></b>\n  {}", api.lock.top_dir)
-        mprint("  (users are encouraged to inspect/edit it)")
-        # mprint("<b><blue>env files :</blue></b>\n  {}\n  {}", api.config[ENV_SH_PATH], api.config[ENV_CSH_PATH])
         print_packets_info(api)
 
 
 # Register all subcommands
-edpm_cli.add_command(install_group)
-# edpm_cli.add_command(find_group)
+edpm_cli.add_command(install_command)
 edpm_cli.add_command(env_group)
 edpm_cli.add_command(req_command)
-# edpm_cli.add_command(set_command)
-# edpm_cli.add_command(rm_command)
-# edpm_cli.add_command(pwd_command)
+edpm_cli.add_command(rm_command)
+edpm_cli.add_command(pwd_command)
 edpm_cli.add_command(clean_command)
 edpm_cli.add_command(info_command)
 edpm_cli.add_command(config_command)

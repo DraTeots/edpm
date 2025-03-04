@@ -6,7 +6,7 @@ from typing import Dict, List, Set, Tuple, Optional
 from edpm.engine.api import EdpmApi
 from edpm.engine.output import markup_print as mprint
 
-@click.command()
+@click.command("req")
 @click.argument('os_name', nargs=1, metavar='<os-name>')
 @click.argument('package_names', nargs=-1, metavar='<package-names>')
 @click.option('--optional', 'print_mode', flag_value='optional', help="Print optional packages")

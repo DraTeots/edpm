@@ -6,7 +6,7 @@ https://github.com/key4hep/EDM4hep
 import os
 import platform
 
-from edpm.engine.generators.steps import EnvSet, EnvAppend
+from edpm.engine.generators.steps import EnvSet, EnvAppend, CmakePrefixPath
 from edpm.engine.composed_recipe import ComposedRecipe
 
 
@@ -31,5 +31,5 @@ class Edm4HepRecipe(ComposedRecipe):
             yield EnvAppend('DYLD_LIBRARY_PATH', os.path.join(path, 'lib'))
 
         yield EnvAppend('LD_LIBRARY_PATH', os.path.join(path, 'lib'))
-        yield EnvAppend('CMAKE_PREFIX_PATH', os.path.join(path, 'lib', 'cmake', 'EDM4HEP'))
+        yield CmakePrefixPath(os.path.join(path, 'lib', 'cmake', 'EDM4HEP'))
         yield EnvSet('EDM4HEP_ROOT', path)

@@ -6,7 +6,7 @@ https://github.com/AIDASoft/DD4hep
 import os
 import platform
 
-from edpm.engine.generators.steps import EnvSet, EnvAppend, EnvPrepend, EnvRawText
+from edpm.engine.generators.steps import EnvSet, EnvAppend, EnvPrepend, EnvRawText, CmakePrefixPath
 from edpm.engine.composed_recipe import ComposedRecipe
 
 
@@ -40,7 +40,7 @@ class DD4HepRecipe(ComposedRecipe):
             yield EnvAppend('DYLD_LIBRARY_PATH', lib_path)
 
         # CMake detection
-        yield EnvAppend('CMAKE_PREFIX_PATH', cmake_path)
+        yield CmakePrefixPath(cmake_path)
 
         # Root cling might want to find these headers
         yield EnvAppend('ROOT_INCLUDE_PATH', include_path)

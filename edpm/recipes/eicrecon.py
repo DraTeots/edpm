@@ -5,7 +5,7 @@ https://gitlab.com/eic/eicrecon
 """
 import os
 
-from edpm.engine.generators.steps import EnvSet, EnvPrepend
+from edpm.engine.generators.steps import EnvSet, EnvPrepend, CmakePrefixPath
 from edpm.engine.composed_recipe import ComposedRecipe
 
 

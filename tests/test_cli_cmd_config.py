@@ -6,7 +6,7 @@ from ruamel.yaml import YAML
 import os
 
 # Import your actual config command
-from edpm.cli.config import config as config_command
+from edpm.cli.config import config_command
 # And the EdpmApi
 from edpm.engine.api import EdpmApi
 

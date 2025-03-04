@@ -29,7 +29,7 @@ class HepMC3Recipe(ComposedRecipe):
 
         yield EnvPrepend('PATH', bin_path)
         yield EnvSet('HEPMC3_DIR', path)
-        yield EnvAppend('CMAKE_PREFIX_PATH', os.path.join(path, 'share', 'HepMC3', 'cmake'))
+        yield CmakePrefixPath(os.path.join(path, 'share', 'HepMC3', 'cmake'))
 
         if platform.system() == 'Darwin':
             yield EnvAppend('DYLD_LIBRARY_PATH', os.path.join(path, 'lib'))

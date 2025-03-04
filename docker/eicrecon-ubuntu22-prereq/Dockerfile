@@ -1,12 +1,12 @@
 #
-# docker build -t eicdev/eicrecon-ubuntu22-prereq:latest .  
-# docker build -t eicdev/eicrecon-ubuntu22-prereq:latest --build-arg BUILD_THREADS=24 .
-# docker push eicdev/eicrecon-ubuntu22-prereq:latest
+# docker build -t eicdev/full-stack-prereq:latest .
+# docker build -t eicdev/full-stack-prereq:latest --build-arg BUILD_THREADS=24 .
+# docker push eicdev/full-stack-prereq:latest
 # 
-# docker run --rm -it --init eicdev/eicrecon-ubuntu22-prereq:latest
-# docker run --rm -it --init -p8888:8888 eicdev/eicrecon-ubuntu22-prereq:latest
+# docker run --rm -it --init eicdev/full-stack-prereq:latest
+# docker run --rm -it --init -p8888:8888 eicdev/full-stack-prereq:latest
 
-FROM ubuntu:24.04
+FROM eicdev/ubuntu-dev:latest
 
 # Number of build threads
 ARG BUILD_THREADS=8
@@ -19,14 +19,6 @@ SHELL ["/bin/bash", "-c"]
 
 ARG DEBIAN_FRONTEND=noninteractive
 
-RUN apt-get update &&\
-    apt-get install -y python3-pip python3-dev sudo git cmake apt-utils &&\
-    apt-get install -y dialog apt-utils&&\
-    apt-get install -y tzdata &&\
-    apt-get install -y libmsgsl-dev libftgl-dev libxml2-dev libldap2-dev libgsl0-dev libfftw3-dev libmysqlclient-dev libavahi-compat-libdnssd-dev libssl-dev python3-dev libcfitsio-dev xlibmesa-glu-dev libkrb5-dev gfortran graphviz-dev libpcre3-dev libglew-dev libxmu-dev libexpat-dev python3-jinja2 libtbb-dev libxerces-c-dev cmake libboost-filesystem-dev dpkg-dev libspdlog-dev libxext-dev qtbase5-dev libqt5opengl5-dev libx11-dev libboost-test-dev libocct-draw-dev libeigen3-dev libocct-data-exchange-dev python3-dev libocct-foundation-dev libfmt-dev libxft-dev libboost-program-options-dev libboost-dev binutils libxpm-dev curl libxerces-c3-dev occt-misc python3-yaml &&\
-    rm -rf /var/lib/apt/lists/* &&\
-    python3 -m pip install --upgrade pip 
-    
 
 RUN useradd -m -G sudo eicuser
 RUN echo "eicuser ALL=(ALL) NOPASSWD:ALL">>/etc/sudoers

@@ -27,3 +27,4 @@ packages:
         -DCMAKE_CXX_STANDARD=17 -DCMAKE_BUILD_TYPE=RelWithDebInfo  /mnt/e/data/edpm/eigen3/src '
       build_cmd: cmake --build /mnt/e/data/edpm/eigen3/build -- -j 4
       install_cmd: cmake --build /mnt/e/data/edpm/eigen3/build --target install
+    owned: true

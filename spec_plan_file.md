@@ -95,10 +95,11 @@ packages:
 
       environment:
         - prepend:
-            PATH: "$install_dir/bin"
+            PATH: "$install_path/bin"
         - prepend:
-            LD_LIBRARY_PATH: "$install_dir/lib"
+            LD_LIBRARY_PATH: "$install_path/lib"
 ```
+
 
 **Explanation**:
 
@@ -111,6 +112,34 @@ packages:
 - **`environment:`** is a list of environment operations that EDPM merges into your final
   environment scripts (`env.sh`,
   `env.csh`).
+
+### 2.3 Existing packages
+
+Sometimes one need to just point to existing pre-installed packages. A common scenario is that
+a package is installed by conda but one would like to customize related environment, include
+the package in generated integration files, etc.
+
+If package has `existing` field, it is considered that we refer to such pre-existing package. 
+In this case is general, nothing will be done during the install phase (no fetch, build, install).
+But the info will be added to lock file on 'install', generator scripts will try to generate 
+standard environment for this package, etc. 
+
+By default, it is considered that `existing` value should be the path to the installation folder. 
+But custom written package installation recipes may interpret value as they need. 
+
+```yaml
+  # (A) Known recipe installed externally (or in the system)
+  - clhep:
+      existing: "/apps/conda/envs/np"
+      
+  # (B) Unknown recipe installed externally (or in the system)
+  - linalg:
+      existing: "/apps/conda/envs/np"
+      environment:
+        - prepend:
+            PATH: "$install_path/bin"
+            LD_LIBRARY_PATH: "$install_path/lib"
+```
 
 ---
 
@@ -206,7 +235,7 @@ expand these placeholders at build time.
 **Placeholders**:
 
 - `$<depname>.install_dir`
-- `$install_dir` (the current package’s own install path)
+- `$install_path` (the current package’s own install path)
 - Potentially `$build_dir`, `$source_dir`, etc. (the current package’s build or source directories)
 
 ---
@@ -222,11 +251,11 @@ Example:
 ```yaml
 environment:
   - set:
-      MYLIB_HOME: "$install_dir"
+      MYLIB_HOME: "$install_path"
   - prepend:
-      PATH: "$install_dir/bin"
+      PATH: "$install_path/bin"
   - prepend:
-      LD_LIBRARY_PATH: "$install_dir/lib"
+      LD_LIBRARY_PATH: "$install_path/lib"
 ```
 
 You can combine this with the “maker default environment logic” if you want certain expansions to
@@ -273,7 +302,7 @@ global:
 packages:
   # (A) Minimal usage, just referencing known recipes
   - root
-  - geant4
+  - geant4@v11.0.3
 
   # (B) A “my_packet” that uses Git fetch + CMake build
   - my_packet:
@@ -283,9 +312,9 @@ packages:
       cmake_flags: "-DCMAKE_MODULE_PATH=$root.install_dir/lib/cmake -DENABLE_FOO=ON"
       environment:
         - prepend:
-            PATH: "$install_dir/bin"
+            PATH: "$install_path/bin"
         - prepend:
-            LD_LIBRARY_PATH: "$install_dir/lib"
+            LD_LIBRARY_PATH: "$install_path/lib"
 
   # (C) Another custom dep, explicitly stating fetchers
   - my_tar_dep:
@@ -301,18 +330,27 @@ packages:
       make: "cmake"
       cmake_flags: "-DSOME_OPTION=ON"
 
-  # (E) External Requirements
+  # (E) Known recipe installed externally (or in the system)
+  - clhep:
+      existing: "/apps/conda/envs/np"
+      
+  # (F) Unknown recipe installed externally (or in the system)
+  - linalg:
+      existing: "/apps/conda/envs/np"
+      environment:
+        - prepend:
+            PATH: "$install_path/bin"
+            LD_LIBRARY_PATH: "$install_path/lib"
+
+
+  # (G) External Requirements
   - datafiles:
       fetch: "filesystem"
       path: "/data/myfiles"
       environment:
         - set:
-            DATAFILES_PATH: "$install_dir"
-      require:
-        apt:
-          - some-data-utils
-        pip:
-          - requests
+            DATAFILES_PATH: "$install_path"
+      
 ```
 
 **Explanation**:
@@ -324,9 +362,11 @@ packages:
 3. **`my_tar_dep:`** → sets `fetch: "tarball"` explicitly. Then `url: "..."` is used. Builds
    with `autotools`.
 4. **`local_dep:`** → uses `fetch: "filesystem"`. The user just points to a local source dir. They
-   choose `cmake` for
-   building.
-5. **`datafiles:`** → also uses `fetch: "filesystem"`. Doesn’t compile anything, but it might still
+   choose `cmake` for building.
+5. **
+- clhep:
+  existing: "/apps/conda/envs/np" 
+6. **`datafiles:`** → also uses `fetch: "filesystem"`. Doesn’t compile anything, but it might still
    set environment or
    have external system-level requirements.
 
@@ -344,7 +384,7 @@ This **new** plan format merges the best of both worlds:
     - Optional environment blocks
     - Optional external requirements
 
-**Placeholders** like `$root.install_dir` or `$install_dir` allow cross-dependency references and
+**Placeholders** like `$root.install_dir` or `$install_path` allow cross-dependency references and
 expansions at build
 time. This approach fosters both **simplicity** for common packages and **flexibility** for custom
 ones.

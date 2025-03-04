@@ -93,7 +93,7 @@ class RootRecipe(ComposedRecipe):
         bin_path = os.path.join(install_path, 'bin')
         lib_path = os.path.join(install_path, 'lib')
         cmake_path = os.path.join(install_path, 'cmake')
-        yield CmakePrefixPath( cmake_path)
+        yield CmakePrefixPath(cmake_path)
 
         # We'll skip calling 'thisroot' if conda is found
         is_under_conda = os.environ.get('ROOT_INSTALLED_BY_CONDA', False)

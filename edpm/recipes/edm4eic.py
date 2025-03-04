@@ -5,7 +5,7 @@ https://github.com/eic/edm4eic.git
 import os
 import platform
 
-from edpm.engine.generators.steps import EnvSet, EnvAppend
+from edpm.engine.generators.steps import EnvSet, EnvAppend, CmakePrefixPath
 from edpm.engine.composed_recipe import ComposedRecipe
 
 
@@ -39,4 +39,4 @@ class Edm4EicRecipe(ComposedRecipe):
             yield EnvAppend('LD_LIBRARY_PATH', os.path.join(path, 'lib64'))
         yield EnvAppend('LD_LIBRARY_PATH', os.path.join(path, 'lib'))
 
-        yield EnvAppend('CMAKE_PREFIX_PATH', os.path.join(path, 'lib', 'EDM4EIC'))
+        yield CmakePrefixPath(os.path.join(path, 'lib', 'EDM4EIC'))

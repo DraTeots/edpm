@@ -5,7 +5,7 @@ https://github.com/acts-project/actsvg.git
 import os
 import platform
 
-from edpm.engine.generators.steps import EnvAppend
+from edpm.engine.generators.steps import EnvAppend, CmakePrefixPath
 from edpm.engine.composed_recipe import ComposedRecipe
 
 
@@ -31,5 +31,5 @@ class ActsSvgRecipe(ComposedRecipe):
 
         yield EnvAppend('LD_LIBRARY_PATH', os.path.join(path, 'lib'))
         # Example usage: cmake config location might be named differently:
-        yield EnvAppend('CMAKE_PREFIX_PATH', os.path.join(path, 'lib', 'cmake', 'actsvg-0.1'))
+        yield CmakePrefixPath(os.path.join(path, 'lib', 'cmake', 'actsvg-0.1'))
 

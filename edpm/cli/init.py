@@ -63,10 +63,10 @@ packages:
   #   apt: [ libeigen3-dev ]
 """
 
-@click.command()
+@click.command("command")
 @click.option("--force", is_flag=True, default=False, help="Overwrite existing plan.edpm.yaml if it already exists.")
 @click.pass_context
-def init(ctx, force):
+def init_command(ctx, force):
     """
     Creates a minimal EDPM plan template (plan.edpm.yaml)
     in the current directory with commented placeholders.

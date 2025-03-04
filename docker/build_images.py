@@ -260,7 +260,7 @@ def main():
     # What images to build
     if not args.command:
         print("No image is provided, using default")
-        args.command = ['eicrecon-ubuntu22-prereq', 'eicrecon-ubuntu22', 'jana4ml4fpga-ubuntu22', 'ml4fpga-pre']
+        args.command = ['full-stack-prereq', 'full-stack', 'jana4ml4fpga-ubuntu22', 'ml4fpga-pre']
 
     print(f"Images: {args.command} (arg type of {type(args.command)})")
 
