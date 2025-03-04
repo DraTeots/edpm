@@ -14,7 +14,7 @@ from edpm.version import version
 from edpm.cli.env import env_group
 from edpm.cli.install import install as install_group
 from edpm.cli.find import find as find_group
-from edpm.cli.req import req as requirements_command
+from edpm.cli.req import req_command
 from edpm.cli.set import set as set_command
 from edpm.cli.rm import rm as rm_command
 from edpm.cli.pwd import pwd as pwd_command
@@ -119,11 +119,11 @@ def edpm_cli(ctx, plan, lock, top_dir):
 edpm_cli.add_command(install_group)
 # edpm_cli.add_command(find_group)
 edpm_cli.add_command(env_group)
-# edpm_cli.add_command(requirements_command)
+edpm_cli.add_command(req_command)
 # edpm_cli.add_command(set_command)
 # edpm_cli.add_command(rm_command)
 # edpm_cli.add_command(pwd_command)
-# edpm_cli.add_command(clean_command)
+edpm_cli.add_command(clean_command)
 edpm_cli.add_command(info_command)
 edpm_cli.add_command(config_command)
 edpm_cli.add_command(init_command)

@@ -6,7 +6,7 @@ https://github.com/catchorg/Catch2
 import os
 import platform
 
-from edpm.engine.generators.steps import EnvAppend
+from edpm.engine.generators.steps import EnvAppend, CmakePrefixPath
 from edpm.engine.composed_recipe import ComposedRecipe
 
 
@@ -32,4 +32,4 @@ class Catch2Recipe(ComposedRecipe):
             yield EnvAppend('DYLD_LIBRARY_PATH', os.path.join(path, 'lib'))
 
         yield EnvAppend('LD_LIBRARY_PATH', os.path.join(path, 'lib'))
-        yield EnvAppend('CMAKE_PREFIX_PATH', os.path.join(path, 'lib', 'cmake', 'Catch2'))
+        yield CmakePrefixPath(os.path.join(path, 'lib', 'cmake', 'Catch2'))

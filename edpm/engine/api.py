@@ -196,6 +196,7 @@ class EdpmApi:
         self.lock.update_package(dep_name, {
             "install_path": final_install,
             "built_with_config": dict(combined_config),
+            "owned": True
         })
         self.lock.save()
 
