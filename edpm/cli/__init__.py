@@ -65,15 +65,33 @@ def edpm_cli(ctx, plan, lock, top_dir):
     """
     assert isinstance(ctx, click.Context), "EdpmApi context not available."
 
-    # Get file paths from environment variables or use defaults
+    # Get plan file path from environment variable or use default
     plan_file = os.environ.get("EDPM_PLAN_FILE", "plan.edpm.yaml")
-    lock_file = os.environ.get("EDPM_LOCK_FILE", "plan-lock.edpm.yaml")
 
-    # Override with provided parameters if they exist
+    # Override with provided parameter if it exists
     if plan:
         plan_file = str(plan)
+
+    # Determine lock file path
     if lock:
+        # Explicit lock file path provided
         lock_file = str(lock)
+    elif "EDPM_LOCK_FILE" in os.environ:
+        # Environment variable for lock file
+        lock_file = os.environ["EDPM_LOCK_FILE"]
+    else:
+        # Derive lock file path from plan file path
+        plan_basename = os.path.basename(plan_file)
+        plan_dir = os.path.dirname(plan_file)
+
+        # Replace extension or add '-lock' before extension
+        if '.' in plan_basename:
+            name_part, ext = os.path.splitext(plan_basename)
+            lock_basename = f"{name_part}-lock{ext}"
+        else:
+            lock_basename = f"{plan_basename}-lock.edpm.yaml"
+
+        lock_file = os.path.join(plan_dir, lock_basename)
 
     if not os.path.isfile(plan_file) and ctx.invoked_subcommand != "init":
         print(f"Plan file does not exists (or there is no access to it): {plan_file}")

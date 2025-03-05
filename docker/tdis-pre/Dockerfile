@@ -1,4 +1,4 @@
-#
+# BUILDX_EXPERIMENTAL=1 docker buildx debug --invoke bash build --progress=plain
 # docker build -t eicdev/tdis-pre:latest .
 # docker build -t eicdev/tdis-pre:latest --build-arg BUILD_THREADS=24 .
 # docker push eicdev/tdis-pre:latest

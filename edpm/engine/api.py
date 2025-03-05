@@ -15,47 +15,6 @@ from edpm.engine.generators.environment_generator import EnvironmentGenerator
 from edpm.engine.generators.cmake_generator import CmakeGenerator
 
 
-def print_packets_info(api: "EdpmApi"):
-    """
-    Helper function to print installed vs. not-installed packages info.
-    """
-    all_deps = [d.name for d in api.plan.packages()]
-    installed_names = []
-    not_installed_names = []
-    for dep_name in all_deps:
-        if api.lock.is_installed(dep_name):
-            installed_names.append(dep_name)
-        else:
-            not_installed_names.append(dep_name)
-
-    if installed_names:
-        mprint('\n<b><magenta>INSTALLED PACKAGES:</magenta></b>')
-        for dep_name in sorted(installed_names):
-            dep_data = api.lock.get_installed_package(dep_name)
-            install_path = dep_data.get("install_path", "")
-            mprint(' <b><blue>{}</blue></b>: {}', dep_name, install_path)
-    else:
-        mprint("\n<magenta>No packages currently installed.</magenta>")
-
-    if not_installed_names:
-        mprint("\n<b><magenta>NOT INSTALLED:</magenta></b>\n(could be installed by 'edpm install')")
-        for dep_name in sorted(not_installed_names):
-            mprint(' <b><blue>{}</blue></b>', dep_name)
-    else:
-        mprint("\nAll plan packages appear to be installed.")
-
-    _, bash_out = api.get_env_paths("bash")
-    _, csh_out = api.get_env_paths("csh")
-    _, toolchain_out = api.get_cmake_toolchain_paths()
-    _, presets_out = api.get_cmake_presets_paths()
-
-    mprint(f"<b><blue>bash env</blue></b>        : {bash_out}")
-    mprint(f"<b><blue>csh  env</blue></b>        : {csh_out}")
-    mprint(f"<b><blue>CMake toolchain</blue></b> : {toolchain_out}")
-    mprint(f"<b><blue>CMake presets  </blue></b> : {presets_out}")
-
-
-
 class EdpmApi:
     """
     Main EDPM API class.
@@ -296,3 +255,43 @@ class EdpmApi:
         mprint(f"<green>[Saved]</green> CMake toolchain: {toolchain_out}")
         cm_gen.save_presets_with_infile(presets_in, presets_out)
         mprint(f"<green>[Saved]</green> CMake presets  : {presets_out}")
+
+
+def print_packets_info(api: "EdpmApi"):
+    """
+    Helper function to print installed vs. not-installed packages info.
+    """
+    all_deps = [d.name for d in api.plan.packages()]
+    installed_names = []
+    not_installed_names = []
+    for dep_name in all_deps:
+        if api.lock.is_installed(dep_name):
+            installed_names.append(dep_name)
+        else:
+            not_installed_names.append(dep_name)
+
+    if installed_names:
+        mprint('\n<b><magenta>INSTALLED PACKAGES:</magenta></b>')
+        for dep_name in sorted(installed_names):
+            dep_data = api.lock.get_installed_package(dep_name)
+            install_path = dep_data.get("install_path", "")
+            mprint(' <b><blue>{}</blue></b>: {}', dep_name, install_path)
+    else:
+        mprint("\n<magenta>No packages currently installed.</magenta>")
+
+    if not_installed_names:
+        mprint("\n<b><magenta>NOT INSTALLED:</magenta></b>\n(could be installed by 'edpm install')")
+        for dep_name in sorted(not_installed_names):
+            mprint(' <b><blue>{}</blue></b>', dep_name)
+    else:
+        mprint("\nAll plan packages appear to be installed.")
+
+    _, bash_out = api.get_env_paths("bash")
+    _, csh_out = api.get_env_paths("csh")
+    _, toolchain_out = api.get_cmake_toolchain_paths()
+    _, presets_out = api.get_cmake_presets_paths()
+
+    mprint(f"<b><blue>bash env</blue></b>        : {bash_out}")
+    mprint(f"<b><blue>csh  env</blue></b>        : {csh_out}")
+    mprint(f"<b><blue>CMake toolchain</blue></b> : {toolchain_out}")
+    mprint(f"<b><blue>CMake presets  </blue></b> : {presets_out}")
