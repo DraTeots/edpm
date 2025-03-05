@@ -49,13 +49,6 @@ def clean_command(ctx, dep_name):
     else:
         mprint("<yellow>Note:</yellow> '{}' is not owned by EDPM. Remove manually:\n  {}", dep_name, install_path)
 
-    # 4) Update the lock file => clear out install_path (so it’s no longer "installed")
-    api.lock.update_package(dep_name, {
-        "install_path": "",
-        "built_with_config": {}
-    })
-    api.lock.save()
-
     # Rebuild environment scripts
     mprint("\nRebuilding environment scripts...")
     api.save_generator_scripts()

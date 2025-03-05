@@ -95,7 +95,15 @@ class EdpmApi:
             return
 
         for dn in to_install:
-            self._install_single_dependency(dn, force)
+            try:
+                self._install_single_dependency(dn, force)
+            except Exception as ex:
+                if isinstance(ex, OSError) and "failed with return code" in str(ex):
+                    print("Aborting the install")
+                    return
+                else:
+                    raise
+
 
     def _install_single_dependency(self, dep_name: str, force: bool):
         """

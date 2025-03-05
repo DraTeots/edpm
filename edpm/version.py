@@ -1,6 +1,6 @@
 
 # Str version. Used both for setup.py and for internal code
-version = '3.1.5'
+version = '3.1.7'
 
 __version__ = version
 

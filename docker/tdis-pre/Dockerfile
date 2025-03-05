@@ -12,7 +12,7 @@ FROM eicdev/ubuntu-dev:latest
 ARG BUILD_THREADS=8
 
 # Software versions
-ARG VERSION_CERN_ROOT=v6-32-06
+ARG VERSION_CERN_ROOT=v6-34-04
 ARG VERSION_ACTS=v37.4.0
 ARG VERSION_PODIO=v01-01
 ARG VERSION_JANA2=v2.4.0
@@ -24,7 +24,7 @@ ENV APP_ROOT=/container/app
 ARG DEBIAN_FRONTEND=noninteractive
 
 ENV EDPM_PLAN_FILE=${APP_ROOT}/edpm-plan.yaml
-ENV EDPM_LOCK_FILE=${APP_ROOT}/edpm-plan-lock.yaml
+ENV EDPM_PLAN_FILE=${APP_ROOT}/edpm-plan.yaml
 
 # Create a user 'tdisuser' with sudo privileges
 RUN useradd -m -G sudo tdisuser
@@ -37,7 +37,7 @@ RUN install -d -o tdisuser -g tdisuser ${CONTAINER_ROOT} && \
 
 USER tdisuser
 WORKDIR /home/tdisuser
-ENV PATH "$PATH:/home/tdisuser/.local/bin"
+ENV PATH="$PATH:/home/tdisuser/.local/bin"
 
 ENV LC_ALL=C.UTF-8
 ENV LANG=C.UTF-8
@@ -52,6 +52,7 @@ RUN edpm init --force && edpm --top-dir=${APP_ROOT}
 
 # Configure global settings
 RUN edpm config global cxx_standard=20 &&\
+    edpm config global build_threads=${BUILD_THREADS} &&\
     echo "*** EDPM CONFIGURED ***"
 
 RUN edpm add catch2 && \
@@ -65,15 +66,15 @@ RUN edpm add root@${VERSION_CERN_ROOT} && \
     edpm config root cmake_custom_flags="-Dcuda=OFF -Dcudnn=OFF -Dtmva-gpu=OFF" && \
     edpm install root && \
     edpm clean root
+
 #
-##
-## 2) ACTS
-##
-#RUN edpm add acts && \
-#    edpm config acts branch=${VERSION_ACTS} && \
-#    edpm config acts cmake_flags="-DACTS_BUILD_EXAMPLES_PYTHON_BINDINGS=ON -DACTS_BUILD_PLUGIN_TGEO=ON -DACTS_BUILD_PLUGIN_DD4HEP=OFF -DACTS_BUILD_PLUGIN_JSON=ON -DACTS_BUILD_PLUGIN_ACTSVG=OFF" && \
-#    edpm install acts
+# 2) ACTS
 #
+RUN edpm add acts && \
+    edpm config acts branch=${VERSION_ACTS} && \
+    edpm config acts cmake_flags="-DACTS_BUILD_EXAMPLES_PYTHON_BINDINGS=ON -DACTS_BUILD_PLUGIN_TGEO=ON -DACTS_BUILD_PLUGIN_DD4HEP=OFF -DACTS_BUILD_PLUGIN_JSON=ON -DACTS_BUILD_PLUGIN_ACTSVG=OFF" && \
+    edpm install acts
+
 ##
 ## 3) PODIO
 ##

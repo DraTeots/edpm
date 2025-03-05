@@ -51,7 +51,7 @@ packages:
       clone_command: git clone --depth 1 -b v3.8.0 https://github.com/catchorg/Catch2.git
         /mnt/e/data/edpm/catch2/src
       configure_cmd: 'cmake -B /mnt/e/data/edpm/catch2/build -DCMAKE_INSTALL_PREFIX=/mnt/e/data/edpm/catch2/catch2-install
-        -DCMAKE_CXX_STANDARD=17 -DCMAKE_BUILD_TYPE=RelWithDebInfo  /mnt/e/data/edpm/catch2/src '
+        -DCMAKE_CXX_STANDARD=17 -DCMAKE_BUILD_TYPE=RelWithDebInfo   /mnt/e/data/edpm/catch2/src '
       build_cmd: cmake --build /mnt/e/data/edpm/catch2/build -- -j 4
       install_cmd: cmake --build /mnt/e/data/edpm/catch2/build --target install
     owned: true
