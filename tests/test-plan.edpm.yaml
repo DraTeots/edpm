@@ -40,3 +40,4 @@ global:
 packages:
   - eigen3
   - podio
+  - catch2

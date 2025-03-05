@@ -65,57 +65,57 @@ RUN edpm add root@${VERSION_CERN_ROOT} && \
     edpm config root cmake_custom_flags="-Dcuda=OFF -Dcudnn=OFF -Dtmva-gpu=OFF" && \
     edpm install root && \
     edpm clean root
-
 #
-# 2) ACTS
+##
+## 2) ACTS
+##
+#RUN edpm add acts && \
+#    edpm config acts branch=${VERSION_ACTS} && \
+#    edpm config acts cmake_flags="-DACTS_BUILD_EXAMPLES_PYTHON_BINDINGS=ON -DACTS_BUILD_PLUGIN_TGEO=ON -DACTS_BUILD_PLUGIN_DD4HEP=OFF -DACTS_BUILD_PLUGIN_JSON=ON -DACTS_BUILD_PLUGIN_ACTSVG=OFF" && \
+#    edpm install acts
 #
-RUN edpm add acts && \
-    edpm config acts branch=${VERSION_ACTS} && \
-    edpm config acts cmake_flags="-DACTS_BUILD_EXAMPLES_PYTHON_BINDINGS=ON -DACTS_BUILD_PLUGIN_TGEO=ON -DACTS_BUILD_PLUGIN_DD4HEP=OFF -DACTS_BUILD_PLUGIN_JSON=ON -DACTS_BUILD_PLUGIN_ACTSVG=OFF" && \
-    edpm install acts
-
+##
+## 3) PODIO
+##
+#RUN edpm add podio && \
+#    edpm config podio branch=${VERSION_PODIO} && \
+#    edpm config podio cmake_flags="-DBUILD_TESTING=OFF" && \
+#    edpm install podio
 #
-# 3) PODIO
+##
+## 4) JANA2
+##
+#RUN edpm add jana2 && \
+#    edpm config jana2 branch=${VERSION_JANA2} && \
+#    edpm config jana2 cmake_flags="-DUSE_PODIO=On -DUSE_ROOT=On -DCMAKE_BUILD_TYPE=Debug" && \
+#    edpm install jana2
 #
-RUN edpm add podio && \
-    edpm config podio branch=${VERSION_PODIO} && \
-    edpm config podio cmake_flags="-DBUILD_TESTING=OFF" && \
-    edpm install podio
-
+## Print a bit of info
+#RUN ls && pwd
 #
-# 4) JANA2
+## (Optional) jupyterlab or other python packages
+## RUN python3 -m pip install --user jupyterlab
 #
-RUN edpm add jana2 && \
-    edpm config jana2 branch=${VERSION_JANA2} && \
-    edpm config jana2 cmake_flags="-DUSE_PODIO=On -DUSE_ROOT=On -DCMAKE_BUILD_TYPE=Debug" && \
-    edpm install jana2
-
-# Print a bit of info
-RUN ls && pwd
-
-# (Optional) jupyterlab or other python packages
-# RUN python3 -m pip install --user jupyterlab
-
-USER root
-
-SHELL ["/bin/bash", "-c"]
-
-# Create an entrypoint script that sources environment
-RUN echo '#!/bin/bash' > /entrypoint.sh && \
-    echo 'set -e' >> /entrypoint.sh && \
-    echo '' >> /entrypoint.sh && \
-    echo '# Source the EDPM environment script (env.sh)' >> /entrypoint.sh && \
-    echo 'source /home/tdisuser/env.sh || true' >> /entrypoint.sh && \
-    echo '' >> /entrypoint.sh && \
-    echo 'exec "$@"' >> /entrypoint.sh
-
-RUN chmod +x /entrypoint.sh
-ENTRYPOINT ["/entrypoint.sh"]
-
-# For CI or final build steps (optional)
-RUN apt-get update && \
-    apt-get install -y clang-tools-18 clang-tidy && \
-    ln -s /usr/lib/llvm-18/bin/clang-scan-deps /usr/local/bin/clang-scan-deps && \
-    rm -rf /var/lib/apt/lists/*
-
-RUN echo "done"
+#USER root
+#
+#SHELL ["/bin/bash", "-c"]
+#
+## Create an entrypoint script that sources environment
+#RUN echo '#!/bin/bash' > /entrypoint.sh && \
+#    echo 'set -e' >> /entrypoint.sh && \
+#    echo '' >> /entrypoint.sh && \
+#    echo '# Source the EDPM environment script (env.sh)' >> /entrypoint.sh && \
+#    echo 'source /home/tdisuser/env.sh || true' >> /entrypoint.sh && \
+#    echo '' >> /entrypoint.sh && \
+#    echo 'exec "$@"' >> /entrypoint.sh
+#
+#RUN chmod +x /entrypoint.sh
+#ENTRYPOINT ["/entrypoint.sh"]
+#
+## For CI or final build steps (optional)
+#RUN apt-get update && \
+#    apt-get install -y clang-tools-18 clang-tidy && \
+#    ln -s /usr/lib/llvm-18/bin/clang-scan-deps /usr/local/bin/clang-scan-deps && \
+#    rm -rf /var/lib/apt/lists/*
+#
+#RUN echo "done"

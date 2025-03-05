@@ -239,6 +239,10 @@ class CmakeMaker(IMaker):
         )
         self.config["build_cmd"] = f"cmake --build {self.config['build_path']} -- -j {build_threads}"
         self.config["install_cmd"] = f"cmake --build {self.config['build_path']} --target install"
+        from pprint import pprint
+        print("------- config ---------")
+        pprint(self.config)
+        print("------------------------")
 
     def build(self):
         build_path = self.config["build_path"]

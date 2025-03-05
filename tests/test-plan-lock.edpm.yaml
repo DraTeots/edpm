@@ -28,3 +28,30 @@ packages:
       build_cmd: cmake --build /mnt/e/data/edpm/eigen3/build -- -j 4
       install_cmd: cmake --build /mnt/e/data/edpm/eigen3/build --target install
     owned: true
+  catch2:
+    install_path: /mnt/e/data/edpm/catch2/catch2-install
+    built_with_config:
+      env_bash_out: /mnt/e/dev/edpm/tests/tmp/env.sh
+      env_csh_out: /mnt/e/dev/edpm/tests/tmp/env.csh
+      cmake_toolchain_out: /mnt/e/dev/edpm/tests/tmp/CmakeToolchain.cmake
+      cmake_presets_out: /mnt/e/dev/edpm/tests/tmp/Edpm.presets.json
+      env_file_bash: /mnt/e/dev/edpm/tests/tmp/env.sh
+      app_path: /mnt/e/data/edpm/catch2
+      fetch: git
+      make: cmake
+      url: https://github.com/catchorg/Catch2.git
+      branch: v3.8.0
+      app_name: catch2
+      cmake_build_type: RelWithDebInfo
+      fetch_path: /mnt/e/data/edpm/catch2/src
+      source_path: /mnt/e/data/edpm/catch2/src
+      build_path: /mnt/e/data/edpm/catch2/build
+      install_path: /mnt/e/data/edpm/catch2/catch2-install
+      git_clone_depth: --depth 1
+      clone_command: git clone --depth 1 -b v3.8.0 https://github.com/catchorg/Catch2.git
+        /mnt/e/data/edpm/catch2/src
+      configure_cmd: 'cmake -B /mnt/e/data/edpm/catch2/build -DCMAKE_INSTALL_PREFIX=/mnt/e/data/edpm/catch2/catch2-install
+        -DCMAKE_CXX_STANDARD=17 -DCMAKE_BUILD_TYPE=RelWithDebInfo  /mnt/e/data/edpm/catch2/src '
+      build_cmd: cmake --build /mnt/e/data/edpm/catch2/build -- -j 4
+      install_cmd: cmake --build /mnt/e/data/edpm/catch2/build --target install
+    owned: true

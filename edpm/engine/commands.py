@@ -29,7 +29,11 @@ class RunCommand(Command):
 
         # Wrap actual command so we source env_file first in a bash subshell
         if self.env_file:
-            shell_cmd = f'bash -c "source \\"{self.env_file}\\" && env && {self.args}"'
+            shell_cmd = (f'bash -c "source \\"{self.env_file}\\" && '
+                         f'echo \'------- env ---------\' && '
+                         f'env && '
+                         f'echo \'---------------------\' && '
+                         f' {self.args}"')
         else:
             shell_cmd = self.args
         self.return_code = subprocess.call(shell_cmd, stdout=sys.stdout, stderr=sys.stderr, shell=True)
