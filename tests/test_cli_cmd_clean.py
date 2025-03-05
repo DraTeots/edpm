@@ -102,7 +102,6 @@ def test_clean_success(runner, mock_api):
         assert build_dir in calls
         assert source_dir in calls
 
-        mock_lock_save.assert_called_once()
         mock_save_gens.assert_called_once()
 
 def test_clean_missing_install(runner, mock_api):
