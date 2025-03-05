@@ -33,7 +33,7 @@ def install_command(ctx, names, top_dir, just_explain, force):
     # 3) If no arguments => install everything from the plan
     if not names:
         # "dep_names" = all from the plan
-        dep_names = [dep.name for dep in edpm_api.plan.dependencies()]
+        dep_names = [dep.name for dep in edpm_api.plan.packages()]
         if not dep_names:
             mprint("<red>No dependencies in the plan!</red> "
                    "Please add packages or run 'edpm install <pkg>' to auto-add.")

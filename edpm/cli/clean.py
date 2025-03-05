@@ -39,7 +39,6 @@ def clean_command(ctx, dep_name):
     # 3) If EDPM owns it, remove the directories: install_path, build_path, source_path, etc.
     if is_owned:
         dirs_to_remove = [
-            install_path,
             config.get("build_path", ""),
             config.get("source_path", "")
         ]
@@ -57,8 +56,8 @@ def clean_command(ctx, dep_name):
     })
     api.lock.save()
 
-    # 5) Optionally rebuild environment scripts
+    # Rebuild environment scripts
     mprint("\nRebuilding environment scripts...")
     api.save_generator_scripts()
 
-    mprint("<green>Success:</green> Cleaned '{}' installation", dep_name)
+    mprint("<green>Success:</green> Cleaned '{}'", dep_name)

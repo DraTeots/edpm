@@ -1,4 +1,4 @@
-# lockfile.py
+# edpm/engine/lockfile.py
 
 import os
 from typing import Dict, Any
@@ -59,3 +59,11 @@ class LockfileConfig:
 
     def get_installed_packages(self):
         return list(self.data["packages"].keys())
+
+    def remove_package(self, name: str):
+        """
+        Removes a package from the lock file.
+        Note: This method silently ignores attempts to remove non-existent packages.
+        """
+        if name in self.data["packages"]:
+            del self.data["packages"][name]

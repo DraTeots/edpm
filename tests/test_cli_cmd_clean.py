@@ -94,12 +94,11 @@ def test_clean_success(runner, mock_api):
         # 2) Invoke the command
         result = runner.invoke(cli, ["clean", "mypkg"], obj=mock_api)
         assert result.exit_code == 0
-        assert "Cleaned 'mypkg' installation" in result.output
+        assert "Cleaned 'mypkg'" in result.output
 
         # 3) Verify the calls
         # We expect rmtree calls for install_dir, build_dir, source_dir
         calls = [call.args[0] for call in mock_rmtree.call_args_list]
-        assert install_dir in calls
         assert build_dir in calls
         assert source_dir in calls
 
