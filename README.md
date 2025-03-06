@@ -10,7 +10,11 @@
 ## Overview
 
 **edpm** is a lightweight dependency manager for C++/CMake projects that tries to balance between
-simplicity and power. 
+simplicity and power. By using plan(manifest) and lock files, **edpm** separates the dependency a
+cquisition process from your build, giving you reproducible way to manage dependency compilation 
+without the overhead. But it integrates with CMake right after for your convenience!
+It's ideal for scientific and research projects that need a fixed set
+of dependencies with minimal fuss.
 
 **When do you need it?** (tale) You happily live in a common C++ CMake development environment 
 until one day your project needs a couple of dependencies to be built with pretty custom configurations.
@@ -20,14 +24,14 @@ building perl (true story). You then choose to use simple Cmake FetchContent, ri
 dependency management is now tightly coupled with the build system. And you not only struggle
 from architecture point, but notice that CMake configuration now takes around 2 hours, as CERN ROOT 
 compilation takes 93 minutes and Geant4 is another 27 minutes and sometimes spontaneously 
-cmake decides to rebuild them.  
+cmake decides to rebuild them.
 Finally, you managed to manage your dependencies but now need to install your
 whole custom stack on cluster machines with old obscure linux, and build container images and 
 you want to keep the building in coherent way, making adjustments for systems... 
 You probably understand now! We claim that in this scenario `edpm` is more convenient 
 than a pile of overgrown barely readable bash scripts.
 
-When Conan is too complex, Spack pulls in too many dependencies, and CMake's FetchContent blurs the
+Story TL;DR; When Conan is too complex, Spack pulls in too many dependencies, and CMake's FetchContent blurs the
 line between dependency acquisition and building, **edpm** offers a focused niche solution.
 
 **Key Features:**
