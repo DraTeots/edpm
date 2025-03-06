@@ -1,7 +1,7 @@
 # edpm
 
 [![PyPI version](https://badge.fury.io/py/edpm.svg)](https://pypi.org/project/edpm/)
-[![GitHub Actions Status](https://github.com/eic/edpm/workflows/Tests/badge.svg)](https://github.com/eic/edpm/actions)
+[![EDPM Tests](https://github.com/DraTeots/edpm/actions/workflows/test.yaml/badge.svg)](https://github.com/DraTeots/edpm/actions/workflows/test.yaml)
 
 **edpm** stands for **e**asy **d**ependency **p**acket **m**anagement
 
