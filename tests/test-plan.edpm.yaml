@@ -38,6 +38,9 @@ global:
     cmake_toolchain_out: /mnt/e/dev/edpm/tests/tmp/CmakeToolchain.cmake
     cmake_presets_out: /mnt/e/dev/edpm/tests/tmp/Edpm.presets.json
 packages:
+  - catch2
   - eigen3
   - podio
-  - catch2
+  - edm4hep
+  - evio
+
