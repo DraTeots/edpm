@@ -26,7 +26,7 @@ RUN apt-get update &&\
                        libocct-draw-dev libeigen3-dev libocct-data-exchange-dev libocct-foundation-dev  \
                        libfmt-dev libxft-dev libboost-program-options-dev libboost-dev libxpm-dev   \
                        libxerces-c3-dev occt-misc libvdt-dev libglu1-mesa-dev libgraphviz-dev \
-                       libgsl-dev qtwebengine5-dev nlohmann-json3-dev &&\
+                       libgsl-dev qtwebengine5-dev nlohmann-json3-dev liblz4-dev &&\
     apt-get clean && apt-get autoremove -y && rm -rf /var/lib/apt/lists/*
 
 # EnvSet clang as default

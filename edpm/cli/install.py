@@ -1,20 +1,21 @@
 # cli/install.py
 
-import os
+
 import click
 from edpm.engine.output import markup_print as mprint
 from edpm.engine.api import EdpmApi  # EdpmApi is your new-based approach
 
 @click.command("install")
-
 @click.option('--force', is_flag=True, default=False,
               help="Force rebuild/reinstall even if already installed.")
 @click.option('--top-dir', default="", help="Override or set top_dir in the lock file.")
 @click.option('--explain', 'just_explain', is_flag=True, default=False,
               help="Print what would be installed but don't actually install.")
+@click.option('--add', '-a', is_flag=True, default=False,
+              help="Automatically add packages to the plan if not already present.")
 @click.argument('names', nargs=-1)
 @click.pass_context
-def install_command(ctx, names, top_dir, just_explain, force):
+def install_command(ctx, names, add, top_dir, just_explain, force):
     """
     Installs packages (and their dependencies) from the plan, updating the lock file.
 
@@ -24,7 +25,7 @@ def install_command(ctx, names, top_dir, just_explain, force):
     """
 
     edpm_api = ctx.obj
-    assert isinstance(edpm_api, EdpmApi)
+    # assert isinstance(edpm_api, EdpmApi)
 
     # 2) Possibly override top_dir
     if top_dir:
@@ -45,11 +46,27 @@ def install_command(ctx, names, top_dir, just_explain, force):
         for pkg_name in names:
             # Lets check if package is in plan
             if not edpm_api.plan.has_package(pkg_name):
-                mprint(f"<red>Error:</red> '{pkg_name}' is not in plan!")
-                mprint(f"Please add it to plan either by editing the file or by <blue>'edpm add'</blue> command:")
-                mprint(f"edpm add {pkg_name}")
-                exit(1)     # Does it normal to terminate like this?
-
+                if add:
+                    # Auto-add the package to the plan with --add/-a flag
+                    mprint(f"<yellow>Package '{pkg_name}' not in plan.</yellow> "
+                           f"Adding it automatically (-a,--add flag)")
+                    # Call the add_command logic to add the package
+                    try:
+                        # Simple approach: just append the package name as a string to the packages list
+                        edpm_api.plan.add_package(pkg_name)
+                        edpm_api.plan.save(edpm_api.plan_file)
+                        mprint(f"<green>Added '{pkg_name}' to the plan.</green>")
+                    except Exception as e:
+                        mprint(f"<red>Error:</red> Failed to add '{pkg_name}' to plan: {str(e)}")
+                        exit(1)
+                else:
+                    # Without --add flag, show an error and suggest using it
+                    mprint(f"<red>Error:</red> '{pkg_name}' is not in plan!")
+                    mprint(f"Options:")
+                    mprint(f"1. Add it to plan by editing the file")
+                    mprint(f"2. Use <blue>'edpm add {pkg_name}'</blue> command")
+                    mprint(f"3. Use <blue>'edpm install --add {pkg_name}'</blue> to add and install")
+                    exit(1)
 
     # 4) Actually run the install logic
     edpm_api.install_dependency_chain(
