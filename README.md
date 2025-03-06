@@ -9,9 +9,27 @@
 
 ## Overview
 
-**edpm** is a lightweight dependency manager for C++/CMake projects that strikes the perfect balance between simplicity and power. When Spack is too complex, Conan pulls in too many dependencies, and CMake's FetchContent blurs the line between dependency acquisition and building, **edpm** offers a focused solution.
+**edpm** is a lightweight dependency manager for C++/CMake projects that tries to balance between
+simplicity and power. When do you need it? You live in a common C++ development environment and are
+happy until one day you need a couple of dependencies to be built with custom configurations.
+As usual in scientific software, these dependencies are not on Conan. Spack doesn't have correct
+flags and installs around 15,034 of low-level dependencies for the next 10 hours and fails
+on rebuilding perl (true story). You then use simple Cmake FetchContent, right? - and
+notice that CMake configuration now takes around 2 hours, as your dependency management
+is now tightly coupled with the build system, and CERN ROOT compilation takes 93 minutes and Geant4 is
+another 27 minutes and sometimes spontaneously cmake decides to rebuild them. 
+Finally, you managed to manage your dependencies but now need to install your
+whole stack on those cluster machines with old obscure linux, or build container images... 
+You probably understand now! We claim that in this scenario `edpm` is more convenient 
+than a pile of overgrown barely readable bash scripts.
 
-By using manifest and lock files, **edpm** separates the dependency acquisition process from your build, giving you reproducible builds without the overhead. It's ideal for scientific and research projects that need a fixed set of dependencies with minimal fuss.
+When Conan is too complex, Spack pulls in too many dependencies, and CMake's FetchContent blurs the
+line between dependency acquisition and building, **edpm** offers a focused niche solution.
+
+By using plan(manifest) and lock files, **edpm** separates the dependency acquisition process 
+from your build, giving you reproducible way to manage dependency compilation without the overhead. 
+But it integrates with CMake after. It's ideal for scientific and research projects that need a fixed set 
+of dependencies with minimal fuss.
 
 **Key Features:**
 
@@ -19,7 +37,17 @@ By using manifest and lock files, **edpm** separates the dependency acquisition 
 - 🔄 **Build Separation** - Clear separation between dependency management and project building
 - 📝 **Manifest/Lock Design** - Reproducible builds with plain YAML declaration files
 - 🔌 **Environment Integration** - Automatically generates scripts for shell and CMake integration
-- 🐍 **Pure Python** - Written in Python with minimal dependencies, available via pip
+- 🐍 **Pure Python** - Written in Python with minimal dependencies, available via pip ***on any machine***
+
+
+**What EDPM is not?**
+- Not a general-purpose package manager - it doesn't build dependency tree nor download prebuilt 
+  binaries (but can download whatever if you config so)
+- Not a replacement for your OS package manager - it won't install system libraries
+- Not a build system - it helps to build dependencies and integrate into your CMake project. But doesn't replace CMake
+- Not an environment management - not conda, mise, etc. It manages environment scripts but if those needed for integration. 
+- Not a version resolver - it trusts you to pick compatible versions of packages
+- Not trying to be the next Spack/Conan - it deliberately stays lightweight for a specific use case
 
 Happy building!
 
