@@ -62,7 +62,7 @@ RUN edpm add catch2 && \
 #
 # 1) ROOT
 #
-RUN edpm add root@${VERSION_CERN_ROOT} && \
+RUN edpm @${VERSION_CERN_ROOT} && \
     edpm config root cmake_custom_flags="-Dcuda=OFF -Dcudnn=OFF -Dtmva-gpu=OFF" && \
     edpm install root && \
     edpm clean root
