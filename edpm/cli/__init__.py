@@ -123,6 +123,7 @@ def edpm_cli(ctx, plan, lock, top_dir):
     if ctx.invoked_subcommand is None:
         mprint("<b><blue>edpm</blue></b> v{}", version)
         mprint("<b><blue>top dir :</blue></b>\n  {}", api.lock.top_dir)
+        mprint("<b><blue>plan and lock:</blue></b>\n  {}\n  {}", api.plan_file, api.lock_file)
         print_packets_info(api)
 
 

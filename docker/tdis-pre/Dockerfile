@@ -44,6 +44,12 @@ ENV LANG=C.UTF-8
 
 WORKDIR ${APP_ROOT}
 
+## For CI or final build steps (optional)
+RUN apt-get update && \
+    apt-get install -y clang-tools-18 clang-tidy dos2unix nlohmann-json3-dev&& \
+    ln -s /usr/lib/llvm-18/bin/clang-scan-deps /usr/local/bin/clang-scan-deps && \
+    rm -rf /var/lib/apt/lists/* \
+
 # Install EDPM v3 and set the top_dir
 RUN python3 -m pip install --user --upgrade --force-reinstall --break-system-packages ruamel.yaml click appdirs edpm
 
@@ -75,21 +81,21 @@ RUN edpm add acts && \
     edpm config acts cmake_flags="-DACTS_BUILD_EXAMPLES_PYTHON_BINDINGS=ON -DACTS_BUILD_PLUGIN_TGEO=ON -DACTS_BUILD_PLUGIN_DD4HEP=OFF -DACTS_BUILD_PLUGIN_JSON=ON -DACTS_BUILD_PLUGIN_ACTSVG=OFF" && \
     edpm install acts
 
-##
-## 3) PODIO
-##
-#RUN edpm add podio && \
-#    edpm config podio branch=${VERSION_PODIO} && \
-#    edpm config podio cmake_flags="-DBUILD_TESTING=OFF" && \
-#    edpm install podio
 #
-##
-## 4) JANA2
-##
-#RUN edpm add jana2 && \
-#    edpm config jana2 branch=${VERSION_JANA2} && \
-#    edpm config jana2 cmake_flags="-DUSE_PODIO=On -DUSE_ROOT=On -DCMAKE_BUILD_TYPE=Debug" && \
-#    edpm install jana2
+# 3) PODIO
+#
+RUN edpm add podio && \
+    edpm config podio branch=${VERSION_PODIO} && \
+    edpm config podio cmake_flags="-DBUILD_TESTING=OFF" && \
+    edpm install podio
+#
+#
+# 4) JANA2
+#
+RUN edpm add jana2 && \
+    edpm config jana2 branch=${VERSION_JANA2} && \
+    edpm config jana2 cmake_flags="-DUSE_PODIO=On -DUSE_ROOT=On -DCMAKE_BUILD_TYPE=Debug" && \
+    edpm install jana2
 #
 ## Print a bit of info
 #RUN ls && pwd
@@ -99,24 +105,21 @@ RUN edpm add acts && \
 #
 #USER root
 #
-#SHELL ["/bin/bash", "-c"]
-#
-## Create an entrypoint script that sources environment
-#RUN echo '#!/bin/bash' > /entrypoint.sh && \
-#    echo 'set -e' >> /entrypoint.sh && \
-#    echo '' >> /entrypoint.sh && \
-#    echo '# Source the EDPM environment script (env.sh)' >> /entrypoint.sh && \
-#    echo 'source /home/tdisuser/env.sh || true' >> /entrypoint.sh && \
-#    echo '' >> /entrypoint.sh && \
-#    echo 'exec "$@"' >> /entrypoint.sh
-#
-#RUN chmod +x /entrypoint.sh
-#ENTRYPOINT ["/entrypoint.sh"]
-#
-## For CI or final build steps (optional)
-#RUN apt-get update && \
-#    apt-get install -y clang-tools-18 clang-tidy && \
-#    ln -s /usr/lib/llvm-18/bin/clang-scan-deps /usr/local/bin/clang-scan-deps && \
-#    rm -rf /var/lib/apt/lists/*
-#
+SHELL ["/bin/bash", "-c"]
+
+# Create an entrypoint script that sources environment
+RUN echo '#!/bin/bash' > /entrypoint.sh && \
+    echo 'set -e' >> /entrypoint.sh && \
+    echo '' >> /entrypoint.sh && \
+    echo '# Source the EDPM environment script (env.sh)' >> /entrypoint.sh && \
+    echo 'source /home/tdisuser/env.sh || true' >> /entrypoint.sh && \
+    echo '' >> /entrypoint.sh && \
+    echo 'exec "$@"' >> /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+
+
+RUN dos2unix /entrypoint.sh
+ENTRYPOINT ["/entrypoint.sh"]
+
 #RUN echo "done"

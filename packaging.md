@@ -7,6 +7,9 @@ pip install --upgrade setuptools wheel twine
 
 python3 -m build
 python3 -m twine upload dist/*
+
+# Under venv or conda: 
+python -m build && python -m twine upload dist/* 
 ```
 
 JLAB CERTIFICATE ERROR:

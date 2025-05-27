@@ -1,0 +1,175 @@
+#!/bin/bash
+
+# Source global definitions
+if [ -f /etc/bashrc ]; then
+    . /etc/bashrc
+fi
+
+# Enable bash completion if available
+if [ -f /usr/share/bash-completion/bash_completion ]; then
+    . /usr/share/bash-completion/bash_completion
+elif [ -f /etc/bash_completion ]; then
+    . /etc/bash_completion
+fi
+
+#######################################################
+# ESSENTIAL SHELL SETTINGS
+#######################################################
+
+# Disable bell
+set bell-style visible 2>/dev/null
+
+# History settings
+export HISTFILESIZE=10000
+export HISTSIZE=1000
+export HISTCONTROL=erasedups:ignoredups:ignorespace
+shopt -s histappend
+shopt -s checkwinsize
+PROMPT_COMMAND='history -a'
+
+# Allow ctrl-S for history navigation
+stty -ixon 2>/dev/null
+
+# Case-insensitive completion
+bind "set completion-ignore-case on" 2>/dev/null
+bind "set show-all-if-ambiguous on" 2>/dev/null
+
+# Default editor
+export EDITOR=vim
+export VISUAL=vim
+
+#######################################################
+# COLORS AND DISPLAY
+#######################################################
+
+# Enable colors
+export CLICOLOR=1
+export LS_COLORS='di=1;34:ln=1;36:ex=1;32:*.tar=1;31:*.gz=1;31:*.zip=1;31:*.jpg=1;35:*.png=1;35:*.mp3=1;35:'
+
+# Colored man pages
+export LESS_TERMCAP_mb=$'\e[1;31m'     # begin bold
+export LESS_TERMCAP_md=$'\e[1;31m'     # begin blink
+export LESS_TERMCAP_me=$'\e[0m'        # reset bold/blink
+export LESS_TERMCAP_se=$'\e[0m'        # reset reverse video
+export LESS_TERMCAP_so=$'\e[1;44;33m'  # reverse video
+export LESS_TERMCAP_ue=$'\e[0m'        # reset underline
+export LESS_TERMCAP_us=$'\e[1;32m'     # begin underline
+
+#######################################################
+# ESSENTIAL ALIASES
+#######################################################
+
+# Safety aliases
+alias cp='cp -i'
+alias mv='mv -i'
+alias rm='rm -i'
+alias mkdir='mkdir -p'
+
+# Better defaults
+alias ls='ls -F --color=auto'
+alias la='ls -la'
+alias ll='ls -l'
+alias lt='ls -ltr'
+alias grep='grep --color=auto'
+alias less='less -R'
+alias vi='vim'
+
+# Navigation shortcuts
+alias ..='cd ..'
+alias ...='cd ../..'
+alias ....='cd ../../..'
+alias home='cd ~'
+alias cd..='cd ..'
+
+# Quick searches
+alias h="history | grep"
+alias p="ps aux | grep"
+alias f="find . -name"
+
+#######################################################
+# USEFUL FUNCTIONS
+#######################################################
+
+# Extract function for common archives
+extract() {
+    if [ -f "$1" ]; then
+        case $1 in
+            *.tar.bz2)   tar xjf "$1"     ;;
+            *.tar.gz)    tar xzf "$1"     ;;
+            *.bz2)       bunzip2 "$1"     ;;
+            *.rar)       unrar x "$1"     ;;
+            *.gz)        gunzip "$1"      ;;
+            *.tar)       tar xf "$1"      ;;
+            *.tbz2)      tar xjf "$1"     ;;
+            *.tgz)       tar xzf "$1"     ;;
+            *.zip)       unzip "$1"       ;;
+            *.Z)         uncompress "$1"  ;;
+            *.7z)        7z x "$1"        ;;
+            *)           echo "Cannot extract '$1'" ;;
+        esac
+    else
+        echo "'$1' is not a valid file"
+    fi
+}
+
+# Create directory and cd into it
+mkcd() {
+    mkdir -p "$1" && cd "$1"
+}
+
+# Go up n directories
+up() {
+    local d=""
+    local limit=${1:-1}
+    for ((i=1; i <= limit; i++)); do
+        d="../$d"
+    done
+    cd $d
+}
+
+#######################################################
+# SIMPLE PROMPT
+#######################################################
+
+# Simple, clean prompt with essential info
+__simple_prompt() {
+    local last_exit=$?
+    local reset='\[\033[0m\]'
+    local bold='\[\033[1m\]'
+    local red='\[\033[0;31m\]'
+    local green='\[\033[0;32m\]'
+    local blue='\[\033[0;34m\]'
+    local cyan='\[\033[0;36m\]'
+    local gray='\[\033[0;37m\]'
+
+    # Show exit code if last command failed
+    if [ $last_exit != 0 ]; then
+        PS1="${red}[${last_exit}]${reset} "
+    else
+        PS1=""
+    fi
+
+    # Container indicator
+    if [ -e /environment ]; then
+        PS1+="${cyan}[container]${reset} "
+    fi
+
+    # User@host (red if root, green if user)
+    if [ $EUID -eq 0 ]; then
+        PS1+="${red}\u@\h${reset}"
+    else
+        PS1+="${green}\u@\h${reset}"
+    fi
+
+    # Current directory
+    PS1+=" ${blue}\w${reset}"
+
+    # Prompt symbol
+    if [ $EUID -eq 0 ]; then
+        PS1+=" ${red}#${reset} "
+    else
+        PS1+=" ${green}\$${reset} "
+    fi
+}
+
+PROMPT_COMMAND='__simple_prompt'

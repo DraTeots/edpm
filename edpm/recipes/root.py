@@ -6,8 +6,7 @@ https://github.com/root-project/root
 
 import os
 import platform
-from distutils.dir_util import mkpath
-from subprocess import check_output
+
 
 from edpm.engine.composed_recipe import ComposedRecipe
 from edpm.engine.generators.steps import EnvSet, EnvPrepend, EnvRawText, CmakePrefixPath

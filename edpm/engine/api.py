@@ -100,7 +100,7 @@ class EdpmApi:
             except Exception as ex:
                 if isinstance(ex, OSError) and "failed with return code" in str(ex):
                     print("Aborting the install")
-                    return
+                    exit(1)
                 else:
                     raise
 
@@ -280,7 +280,7 @@ def print_packets_info(api: "EdpmApi"):
 
     if installed_names:
         mprint('\n<b><magenta>INSTALLED PACKAGES:</magenta></b>')
-        for dep_name in sorted(installed_names):
+        for dep_name in installed_names:
             dep_data = api.lock.get_installed_package(dep_name)
             install_path = dep_data.get("install_path", "")
             mprint(' <b><blue>{}</blue></b>: {}', dep_name, install_path)
@@ -289,7 +289,7 @@ def print_packets_info(api: "EdpmApi"):
 
     if not_installed_names:
         mprint("\n<b><magenta>NOT INSTALLED:</magenta></b>\n(could be installed by 'edpm install')")
-        for dep_name in sorted(not_installed_names):
+        for dep_name in not_installed_names:
             mprint(' <b><blue>{}</blue></b>', dep_name)
     else:
         mprint("\nAll plan packages appear to be installed.")
