@@ -12,7 +12,7 @@ FROM eicdev/ubuntu-dev:latest
 ARG BUILD_THREADS=8
 
 # Software versions
-ARG VERSION_CERN_ROOT=v6-34-04
+ARG VERSION_CERN_ROOT=v6-34-08
 ARG VERSION_ACTS=v37.4.0
 ARG VERSION_PODIO=v01-01
 ARG VERSION_JANA2=v2.4.0
@@ -85,17 +85,17 @@ RUN edpm add acts && \
 # 3) PODIO
 #
 RUN edpm add podio && \
-    edpm config podio branch=${VERSION_PODIO} && \
-    edpm config podio cmake_flags="-DBUILD_TESTING=OFF" && \
-    edpm install podio
-#
+   edpm config podio branch=${VERSION_PODIO} && \
+   edpm config podio cmake_flags="-DBUILD_TESTING=OFF" && \
+   edpm install podio
+
 #
 # 4) JANA2
 #
 RUN edpm add jana2 && \
-    edpm config jana2 branch=${VERSION_JANA2} && \
-    edpm config jana2 cmake_flags="-DUSE_PODIO=On -DUSE_ROOT=On -DCMAKE_BUILD_TYPE=Debug" && \
-    edpm install jana2
+   edpm config jana2 branch=${VERSION_JANA2} && \
+   edpm config jana2 cmake_flags="-DUSE_PODIO=On -DUSE_ROOT=On -DCMAKE_BUILD_TYPE=Debug" && \
+   edpm install jana2
 #
 ## Print a bit of info
 #RUN ls && pwd

@@ -8,7 +8,7 @@ import os
 from edpm.engine.composed_recipe import ComposedRecipe
 from edpm.engine.generators.steps import EnvSet, EnvPrepend
 from edpm.engine.commands import is_not_empty_dir
-from pathlib import Path
+
 
 class Jana4ml4fpgaRecipe(ComposedRecipe):
     """
@@ -94,7 +94,7 @@ class Jana4ml4fpgaRecipe(ComposedRecipe):
         branch = self.config.get('branch', 'main')
         url = self.config.get('url')
         clone_cmd = f'git clone {shallow_flag} -b {branch} {url} "{source_path}"'
-        Path(source_path).mkdir(parents=True, exist_ok=True)
+        os.mkdir(source_path, exist_ok=True)
         run(clone_cmd)
 
     @staticmethod
