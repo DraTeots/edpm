@@ -1,7 +1,4 @@
-# edpm/engine/components.py
-
 import os
-import sys
 from abc import ABC, abstractmethod
 from typing import Dict, Any
 from edpm.engine.commands import run, workdir
@@ -12,14 +9,9 @@ from edpm.engine.commands import run, workdir
 # -------------------------------------
 
 class IFetcher(ABC):
-    """
-    Base interface for "fetchers" that handle retrieving source code, etc.
-    """
+    """ Interface for "fetchers" that handle retrieving source code, etc. """
 
     def __init__(self, config: Dict[str, Any]):
-        """
-        Store the config dict for further usage in fetch steps.
-        """
         self.config = config
 
     def preconfigure(self):

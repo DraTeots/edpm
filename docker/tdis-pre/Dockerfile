@@ -1,4 +1,5 @@
 # BUILDX_EXPERIMENTAL=1 docker buildx debug --invoke bash build --progress=plain
+# docker buildx build --tag eicdev/tdis-pre:latest --push .
 # docker build -t eicdev/tdis-pre:latest .
 # docker build -t eicdev/tdis-pre:latest --build-arg BUILD_THREADS=24 .
 # docker push eicdev/tdis-pre:latest
@@ -6,88 +7,75 @@
 # docker run --rm -it --init eicdev/tdis-pre:latest
 # docker run --rm -it --init -p8888:8888 eicdev/tdis-pre:latest
 
-FROM eicdev/ubuntu-dev:latest
+FROM eicdev/ubuntu-root:latest
 
 # Number of build threads
 ARG BUILD_THREADS=8
-
-# Software versions
-ARG VERSION_CERN_ROOT=v6-34-08
-ARG VERSION_ACTS=v37.4.0
-ARG VERSION_PODIO=v01-01
+ARG CXX_STANDARD=20
 ARG VERSION_JANA2=v2.4.0
-
-ENV EIC_ROOT=/eic
-ENV CONTAINER_ROOT=/container
-ENV APP_ROOT=/container/app
-
-ARG DEBIAN_FRONTEND=noninteractive
-
-ENV EDPM_PLAN_FILE=${APP_ROOT}/edpm-plan.yaml
-ENV EDPM_PLAN_FILE=${APP_ROOT}/edpm-plan.yaml
-
-# Create a user 'tdisuser' with sudo privileges
-RUN useradd -m -G sudo tdisuser
-RUN echo "tdisuser ALL=(ALL) NOPASSWD:ALL">>/etc/sudoers
-
-# Create directories for container paths
-RUN install -d -o tdisuser -g tdisuser ${CONTAINER_ROOT} && \
-    install -d -o tdisuser -g tdisuser ${APP_ROOT} && \
-    install -d -o tdisuser -g tdisuser /eic
-
-USER tdisuser
-WORKDIR /home/tdisuser
-ENV PATH="$PATH:/home/tdisuser/.local/bin"
-
-ENV LC_ALL=C.UTF-8
-ENV LANG=C.UTF-8
 
 WORKDIR ${APP_ROOT}
 
 ## For CI or final build steps (optional)
-RUN apt-get update && \
-    apt-get install -y clang-tools-18 clang-tidy dos2unix nlohmann-json3-dev&& \
-    ln -s /usr/lib/llvm-18/bin/clang-scan-deps /usr/local/bin/clang-scan-deps && \
-    rm -rf /var/lib/apt/lists/* \
+#RUN apt-get update && \
+#    apt-get install -y clang-tools-18 clang-tidy dos2unix nlohmann-json3-dev&& \
+#    ln -s /usr/lib/llvm-18/bin/clang-scan-deps /usr/local/bin/clang-scan-deps && \
+#    rm -rf /var/lib/apt/lists/* \
 
 # Install EDPM v3 and set the top_dir
-RUN python3 -m pip install --user --upgrade --force-reinstall --break-system-packages ruamel.yaml click appdirs edpm
+RUN python3 -m pip install --user --upgrade --force-reinstall --break-system-packages edpm
 
-# Initialize a brand-new EDPM plan (plan.edpm.yaml) if none exists
-RUN edpm init --force && edpm --top-dir=${APP_ROOT}
+# Install OS dependencies
+RUN apt-get update &&\
+    apt-get install -y libfmt-dev &&\
+    apt-get clean && apt-get autoremove -y && rm -rf /var/lib/apt/lists/*
 
-# Configure global settings
-RUN edpm config global cxx_standard=20 &&\
-    edpm config global build_threads=${BUILD_THREADS} &&\
-    echo "*** EDPM CONFIGURED ***"
+
 
 RUN edpm add catch2 && \
     edpm install catch2 && \
     edpm clean catch2
 
-#
-# 1) ROOT
-#
-RUN edpm add root@${VERSION_CERN_ROOT} && \
-    edpm config root cmake_custom_flags="-Dcuda=OFF -Dcudnn=OFF -Dtmva-gpu=OFF" && \
-    edpm install root && \
-    edpm clean root
 
-#
-# 2) ACTS
-#
-RUN edpm add acts && \
-    edpm config acts branch=${VERSION_ACTS} && \
-    edpm config acts cmake_flags="-DACTS_BUILD_EXAMPLES_PYTHON_BINDINGS=ON -DACTS_BUILD_PLUGIN_TGEO=ON -DACTS_BUILD_PLUGIN_DD4HEP=OFF -DACTS_BUILD_PLUGIN_JSON=ON -DACTS_BUILD_PLUGIN_ACTSVG=OFF" && \
-    edpm install acts
+# -------------------
+#   P O D I O
+# -------------------
+ARG PODIO_BRANCH=v01-03
+ARG PODIO_URL="https://github.com/AIDASoft/podio.git"
+ARG PODIO_SOURCE_PATH=${APP_PATH}/podio-source
+ARG PODIO_BUILD_PATH=${APP_PATH}/podio-build
+ARG PODIO_PATH=${APP_PATH}/podio
+RUN cmake -B ${PODIO_BUILD_PATH} \
+          -DCMAKE_INSTALL_PREFIX=${PODIO_PATH} \
+          -DCMAKE_CXX_STANDARD=${CXX_STANDARD} \
+            f"-DCMAKE_BUILD_TYPE={self.config['cmake_build_type']} "
+            f"{cmake_flags} "
+            f"{cmake_user_flags} "
+            f"{self.config['source_path']} "
+        )
+        self.config["build_cmd"] = f"cmake --build {build_path} -- -j {build_threads}"
+        self.config["install_cmd"] = f"cmake --build {build_path} --target install"
 
-#
-# 3) PODIO
-#
+RUN git clone --depth 1 -b ${PODIO_BRANCH} ${PODIO_URL} ${APP_ROOT}/podio-src
 RUN edpm add podio && \
    edpm config podio branch=${VERSION_PODIO} && \
    edpm config podio cmake_flags="-DBUILD_TESTING=OFF" && \
-   edpm install podio
+   edpm install podio \
+
+
+#
+# ACTS
+#
+ARG ACTS_BRANCH=v41.0.0
+ARG ACTS_URL="https://gitlab.cern.ch/acts/acts-core"
+
+RUN git clone --depth 1 -b ${ACTS_BRANCH} ${ACTS_URL} ${APP_ROOT}/acts-src
+RUN edpm add acts && \
+    edpm config acts branch=${VERSION_ACTS} && \
+    edpm config acts cmake_flags="-DACTS_BUILD_PLUGIN_TGEO=ON -DACTS_BUILD_PLUGIN_DD4HEP=ON -DACTS_BUILD_PLUGIN_JSON=ON -DACTS_BUILD_PLUGIN_ACTSVG=OFF -DACTS_BUILD_EXAMPLES_PYTHON_BINDINGS=ON -DACTS_BUILD_PLUGIN_TGEO=ON -DACTS_BUILD_PLUGIN_DD4HEP=OFF -DACTS_BUILD_PLUGIN_JSON=ON -DACTS_BUILD_PLUGIN_ACTSVG=OFF" && \
+    edpm install acts
+
+
 
 #
 # 4) JANA2

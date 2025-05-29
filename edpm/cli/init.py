@@ -2,91 +2,141 @@
 
 import os
 import click
+import glob
+import importlib.util
 
 from edpm.engine.api import EdpmApi
 from edpm.engine.output import markup_print as mprint
 
-TEMPLATE_CONTENT = """\
-# EDPM Manifest Template
-# ----------------------
-# This file defines:
-#   1) A 'global' section for top-level build and environment settings
-#   2) A 'dependencies' array of packages that EDPM will install or manage
 
-# Global configuration block
-global:
-  # cxx_standard: 20      # e.g. 17, 20, 23 for C++
-  # build_threads: 8      # Number of parallel build threads
-  environment:
-    # - set:
-    #     GLOBAL_VAR: "global_value"
-    # - prepend:
-    #     PATH: "/usr/local/global/bin"
-    # - append:
-    #     PYTHONPATH: "/usr/local/global/python"
+def get_templates_dir():
+    """Get the path to the templates directory."""
+    # Find the edpm package directory
+    try:
+        spec = importlib.util.find_spec("edpm")
+        if spec is None:
+            return None
+        edpm_package_dir = os.path.dirname(spec.origin)
+        templates_dir = os.path.join(edpm_package_dir, "templates")
+        return templates_dir if os.path.isdir(templates_dir) else None
+    except Exception:
+        return None
 
-# Dependencies array
-packages:
-  # Example 1: A pre-installed dependency ("manual" recipe)
-  # - recipe: manual
-  #   name: local_root
-  #   location: "/opt/myroot"
-  #   environment:
-  #     - set:
-  #         ROOTSYS: "$location"
-  #     - prepend:
-  #         PATH: "$location/bin"
-  #     - prepend:
-  #         LD_LIBRARY_PATH: "$location/lib"
 
-  # Example 2: A GitHub + CMake-based dependency
-  # - recipe: github-cmake-cpp
-  #   name: MyLib
-  #   repo_address: "https://github.com/example/mylib.git"
-  #   branch: "main"
-  #   cmake_flags: "-DENABLE_FOO=ON"
-  #   environment:
-  #     - prepend:
-  #         PATH: "$install_dir/bin"
-  #     - prepend:
-  #         LD_LIBRARY_PATH: "$install_dir/lib"
+def list_available_templates():
+    """List all available template files."""
+    templates_dir = get_templates_dir()
+    if not templates_dir:
+        return []
 
-  # Example 3: Another approach for system-level libraries
-  # - recipe: manual
-  #   name: system_eigen
-  #   location: "/usr/include/eigen3"
-  #   environment:
-  #     - set:
-  #         EIGEN_HOME: "$location"
+    pattern = os.path.join(templates_dir, "*-plan.edpm.yaml")
+    template_files = glob.glob(pattern)
 
-  # require:
-  #   apt: [ libeigen3-dev ]
-"""
+    # Extract template names (remove path, suffix, and "-plan" part)
+    template_names = []
+    for file_path in template_files:
+        filename = os.path.basename(file_path)
+        # Remove .edpm.yaml suffix and -plan suffix
+        name = filename.replace("-plan.edpm.yaml", "")
+        template_names.append(name)
+
+    return sorted(template_names)
+
+
+def load_template_content(template_name):
+    """Load template content from the templates directory."""
+    templates_dir = get_templates_dir()
+    if not templates_dir:
+        raise FileNotFoundError("Templates directory not found")
+
+    template_filename = f"{template_name}-plan.edpm.yaml"
+    template_path = os.path.join(templates_dir, template_filename)
+
+    if not os.path.isfile(template_path):
+        available = list_available_templates()
+        if available:
+            available_str = ", ".join(available)
+            raise FileNotFoundError(
+                f"Template '{template_name}' not found. Available templates: {available_str}"
+            )
+        else:
+            raise FileNotFoundError(
+                f"Template '{template_name}' not found and no templates directory found"
+            )
+
+    with open(template_path, "r", encoding="utf-8") as f:
+        return f.read()
+
 
 @click.command("init")
-@click.option("--force", is_flag=True, default=False, help="Overwrite existing plan.edpm.yaml if it already exists.")
+@click.option("--force", is_flag=True, default=False,
+              help="Overwrite existing plan.edpm.yaml if it already exists.")
+@click.option("-t", "--template", default="default",
+              help="Template to use for initialization (default: default). Use --list-templates to see available options.")
+@click.option("--list-templates", is_flag=True, default=False,
+              help="List available templates and exit.")
 @click.pass_context
-def init_command(ctx, force):
+def init_command(ctx, force, template, list_templates):
     """
-    Creates a minimal EDPM plan template (plan.edpm.yaml)
-    in the current directory with commented placeholders.
+    Creates an EDPM plan template (plan.edpm.yaml) in the current directory.
+
+    You can specify a template using -t/--template option. Templates are loaded
+    from the edpm/templates/ directory and should be named <template>-plan.edpm.yaml.
+
+    Examples:
+        edpm init                    # Uses default template
+        edpm init -t eic             # Uses eic-plan.edpm.yaml template
+        edpm init -t tdis            # Uses tdis-plan.edpm.yaml template
+        edpm init --list-templates   # Shows available templates
     """
+
+    # Handle --list-templates option
+    if list_templates:
+        available = list_available_templates()
+        if available:
+            mprint("<green>Available templates:</green>")
+            for tmpl in available:
+                mprint("  <blue>{}</blue>", tmpl)
+        else:
+            mprint("<yellow>No templates found in templates directory.</yellow>")
+        return
+
     edpm_api = ctx.obj
-    # Ensure plan & lock are loaded
     assert isinstance(edpm_api, EdpmApi)
     target_file = edpm_api.plan_file
 
-
+    # Check if file already exists
     if os.path.isfile(target_file) and not force:
         mprint("<red>File '{}' already exists.</red> Use --force to overwrite.", target_file)
         return
 
-    with open(target_file, "w", encoding="utf-8") as f:
-        f.write(TEMPLATE_CONTENT)
+    # Load template content
+    try:
+        template_content = load_template_content(template)
+        mprint("<green>Using template:</green> <blue>{}</blue>", template)
+    except FileNotFoundError as e:
+        mprint("<red>Error:</red> {}", str(e))
+        return
+    except Exception as e:
+        mprint("<red>Error loading template:</red> {}", str(e))
+        return
 
-    mprint("<green>Created minimal EDPM plan:</green> {}", target_file)
-    mprint(
-        "You can now edit '{}' to define your dependencies or global config.\n"
-        "Then run 'edpm install' or 'edpm config' to proceed.",
-        target_file
-    )
+    # Write the template content to the target file
+    try:
+        with open(target_file, "w", encoding="utf-8") as f:
+            f.write(template_content)
+
+        mprint("<green>Created EDPM plan:</green> {}", target_file)
+        mprint(
+            "You can now edit '{}' to define your dependencies or global config.\n"
+            "Then run 'edpm install' or 'edpm config' to proceed.",
+            target_file
+        )
+
+        if template != "default":
+            mprint("<blue>Note:</blue> Used template '<blue>{}</blue>'. You may need to customize "
+                   "the configuration for your specific environment.", template)
+
+    except Exception as e:
+        mprint("<red>Error writing plan file:</red> {}", str(e))
+        return

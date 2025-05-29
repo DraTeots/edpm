@@ -19,7 +19,7 @@ class ActsRecipe(ComposedRecipe):
             'fetch': 'git',
             'make': 'cmake',
             'url': 'https://github.com/acts-project/acts.git',
-            'branch': 'v39.2.0',
+            'branch': 'v41.0.0',
             'cmake_flags': '-DACTS_BUILD_PLUGIN_TGEO=ON -DACTS_BUILD_PLUGIN_DD4HEP=ON -DACTS_BUILD_PLUGIN_JSON=ON -DACTS_BUILD_PLUGIN_ACTSVG=OFF'
         }
         super().__init__(name='acts', config=config)

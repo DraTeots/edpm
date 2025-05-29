@@ -51,48 +51,50 @@ class CmakeMaker(IMaker):
         # We'll do that in preconfigure or below:
 
     def preconfigure(self):
-        """
-        Example: set up a 'build_cmd' or combine flags
-        """
-        cxx_std = self.config.get("cxx_standard", 17)
-        build_threads = self.config.get("build_threads", 4)
-        build_path = self.config['build_path']
-        cmake_flags = self.config.get("cmake_flags", "")
-        cmake_user_flags = self.config.get("cmake_user_flags", "")
-        # Compose a single line. This is up to your usage style:
+        """Set configure and build CMD-s"""
+        
+        defaults = {
+            "cxx_standard": 20,
+            "build_threads": 4,
+            "cmake_flags": "",
+            "cmake_user_flags": ""
+        }
+        cfg_with_defs = {**defaults, **self.config}
+
         self.config["configure_cmd"] = (
-            f"cmake -B {build_path} "
-            f"-DCMAKE_INSTALL_PREFIX={self.config['install_path']} "
-            f"-DCMAKE_CXX_STANDARD={cxx_std} "
-            f"-DCMAKE_BUILD_TYPE={self.config['cmake_build_type']} "
-            f"{cmake_flags} "
-            f"{cmake_user_flags} "
-            f"{self.config['source_path']} "
-        )
-        self.config["build_cmd"] = f"cmake --build {build_path} -- -j {build_threads}"
-        self.config["install_cmd"] = f"cmake --build {build_path} --target install"
+            "cmake -B {build_path} "
+            "-DCMAKE_INSTALL_PREFIX={install_path} "
+            "-DCMAKE_CXX_STANDARD={cxx_standard} "
+            "-DCMAKE_BUILD_TYPE={cmake_build_type} "
+            "{cmake_flags} "
+            "{cmake_user_flags} "
+            "{source_path} "
+        ).format(**cfg_with_defs)
+
+
+        self.config["build_cmd"] = "cmake --build {build_path} --parallel {build_threads}".format(**cfg_with_defs)
+        self.config["install_cmd"] = "cmake --build {build_path} --target install".format(**cfg_with_defs)
         from pprint import pprint
         print("------- cmake-maker preconfigure result: ---------")
         pprint(self.config)
         print("--------------------------------------------------")
 
     def build(self):
-        build_path = self.config["build_path"]
-        run(f'mkdir -p "{build_path}"')
-        # We run the build_cmd in that directory
-        configure_cmd = self.config.get("configure_cmd", "")
-        build_cmd = self.config.get("build_cmd", "")
 
-        if not configure_cmd:
+        # Check we have preconfigured everything:
+        if not self.config.get("configure_cmd", ""):
             raise ValueError("[CmakeMaker] build_cmd is empty. Did you call preconfigure?")
 
+        # Create the build_path if it doesn't exist yet
+        run(f'mkdir -p "{self.config["build_path"]}"')
+
+        # We need an environment to configure/build:
         env_file_bash = self.config["env_file_bash"]
         if not os.path.isfile(env_file_bash):
             raise FileNotFoundError(f"[CmakeMaker] Env file does not exist: {env_file_bash}")
 
-        run(configure_cmd, env_file=env_file_bash)
-        run(build_cmd, env_file=env_file_bash)
-
+        run(self.config['configure_cmd'], env_file=env_file_bash)
+        run(self.config['build_cmd'], env_file=env_file_bash)
 
     def install(self):
         """Install the packet"""
@@ -100,13 +102,13 @@ class CmakeMaker(IMaker):
         run(install_cmd, env_file=self.config["env_file_bash"])
 
     def use_common_dirs_scheme(self):
-        """Function sets common directory scheme."""
+        """Function sets a common directory scheme."""
         if 'app_path' in self.config:
             # where we download the source or clone git
             if not 'fetch_path' in self.config:
                 self.config["fetch_path"] = "{app_path}/src".format(**self.config)
 
-            # The directory with source files for current version
+            # The directory with source files for the current version
             if not "source_path" in self.config:
                 self.config["source_path"] = "{app_path}/src".format(**self.config)
 
