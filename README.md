@@ -3,36 +3,47 @@
 [![PyPI version](https://badge.fury.io/py/edpm.svg)](https://pypi.org/project/edpm/)
 [![EDPM Tests](https://github.com/DraTeots/edpm/actions/workflows/test.yaml/badge.svg)](https://github.com/DraTeots/edpm/actions/workflows/test.yaml)
 
-**edpm** stands for **e**asy **d**ependency **p**acket **m**anagement
+**edpm** stands for **e**asy **d**ependency **p**ackage **m**anagement
 
 ---
 
 ## Overview
 
 **edpm** is a lightweight dependency manager for C++/CMake projects that tries to balance between
-simplicity and power. By using plan(manifest) and lock files, **edpm** separates the dependency a
-cquisition process from your build, giving you reproducible way to manage dependency compilation 
-without the overhead. But it integrates with CMake right after for your convenience!
+simplicity, flexibility, reproducibility, and tools integrations. 
+Edpm uses the idea of plan(manifest) and lock files to separate dependency management
+from your build system (e.g. CMake code). 
+This gives you a reproducible way to manage dependency compilation without the overhead.
+But it integrates with CMake right after for your convenience!
+It also serves as one tool for different scenarios with no or minimum reconfiguration: \
+building on your laptop, on a farm, in contaners - use the same simple tool.  
 It's ideal for scientific and research projects that need a fixed set
 of dependencies with minimal fuss.
 
-**When do you need it?** (tale) You happily live in a common C++ CMake development environment 
-until one day your project needs a couple of dependencies to be built with pretty custom configurations.
+**When do you need it?** (a tale) You happily live in a common C++ CMake development environment 
+until one day your project needs a couple of dependencies to be built with custom configurations.
 As usual in scientific software, these dependencies are not on Conan or Conda. Spack doesn't have correct
-flags and installs around 15,034 of low-level dependencies for the next 10 hours and... fails
-building perl (true story). You then choose to use simple Cmake FetchContent, right? - But your 
-dependency management is now tightly coupled with the build system. And you not only struggle
-from architecture point, but notice that CMake configuration now takes around 2 hours, as CERN ROOT 
-compilation takes 93 minutes and Geant4 is another 27 minutes and sometimes spontaneously 
-cmake decides to rebuild them.
+flags and installs around 15,034 of other low-level dependencies for the next 10 hours and... fails
+while building perl (true story). You then choose to use simple Cmake FetchContent, right? - But your 
+dependency management is now tightly coupled with the build system! And you not only struggle
+from architecture point of view, but notice that CMake configuration sometimes now takes around 2 hours, 
+as CERN ROOT compilation takes 93 minutes and Geant4 is another 27 minutes because cmake sometimes 
+spontaneously decides to rebuild them.
 Finally, you managed to manage your dependencies but now need to install your
-whole custom stack on cluster machines with old obscure linux, and build container images and 
+whole custom stack on cluster machines with old obscure linux, and build container images, and 
 you want to keep the building in coherent way, making adjustments for systems... 
+So you start writing bash scripts to automate it somehow and quickly found yourself the only one
+on this planet knowing how it works or you tried to live with containers-only approach 
+as they are very reproducible but quickly figured out their limitations as soon as...
+
 You probably understand now! We claim that in this scenario `edpm` is more convenient 
 than a pile of overgrown barely readable bash scripts.
 
 Story TL;DR; When Conan is too complex, Spack pulls in too many dependencies, and CMake's FetchContent blurs the
 line between dependency acquisition and building, **edpm** offers a focused niche solution.
+
+**When you DON'T need it?** - if you live happily without edpm! If you use Conan, Spack, Conda, 
+bash scripts or CMake fetch and nothing itches - you don't need edpm!  
 
 **Key Features:**
 
@@ -44,11 +55,11 @@ line between dependency acquisition and building, **edpm** offers a focused nich
 
 
 **What EDPM is not?**
-- Not a general-purpose package manager - it doesn't build dependency tree nor download prebuilt 
+- Not a general-purpose package manager — it doesn't build a dependency tree nor download prebuilt 
   binaries (but can download whatever if you config so)
-- Not a replacement for your OS package manager - it won't install system libraries
-- Not a build system - it helps to build dependencies and integrate into your CMake project. But doesn't replace CMake
-- Not an environment management - not conda, mise, etc. It manages environment scripts but if those needed for integration. 
+- Not a replacement for your OS package manager — it won't install system libraries
+- Not a build system - it helps to build dependencies and integrate them into your CMake project. But doesn't replace CMake
+- Not an environment management — not conda, mise, etc. It manages environment scripts, but if those are needed for integration. 
 - Not a version resolver - it trusts you to pick compatible versions of packages
 - Not trying to be the next Spack/Conan - it deliberately stays lightweight for a specific use case
 
@@ -63,11 +74,11 @@ Happy building!
     - **edpm** separates dependency "fetch/install" from the main build, similar to npm/yarn for JavaScript packages.
 
 2. **Keeping It Simple:**
-    - In scientific projects, the full complexity of tools like Spack (which often installs numerous low-level packages) is unnecessary.
+    - In many projects, the full complexity of tools like Spack (which often installs numerous low-level packages) is unnecessary.
     - **edpm** is designed to be more advanced than a bash script, yet far less complex than a full package manager.
 
 3. **Focused, User-Friendly Approach:**
-    - **Manifest and Lock Files:** JSON/YAML manifest and lock files ensure everyone uses identical dependency versions.
+    - **Manifest and Lock Files:** YAML manifest and lock files ensure everyone uses identical dependency versions.
     - **Environment Generation:** Produces shell scripts and CMake configs to easily set up your environment.
     - **Integration with Existing Installations:** Register pre-installed dependencies to avoid rebuilding what's already available.
 
@@ -76,7 +87,8 @@ Happy building!
 ## Comparison with Other Approaches
 
 - **CMake FetchContent / CPM.cmake:**  
-  While FetchContent is convenient for pure CMake projects, it slows down configuration and mixes dependency acquisition with the build.
+  FetchContent is convenient for pure CMake projects. On the bad side, it slows down configuration and mixes dependency acquisition with the build.
+  These are OK for some time, but at some point become larger and larger obstacles for projects. 
   **edpm** keeps these concerns separate, with explicit install commands and independent environment scripts.
 
 - **Spack / Conan:**  
@@ -85,7 +97,7 @@ Happy building!
 
 - **vcpkg & CGet:**  
   vcpkg adds complexity with build profiles (triplets), while CGet (no longer maintained) had the simplicity **edpm** aims for.
-  **edpm** borrows CGet's simplicity while adding modern features like environment management and manifest/lock files.
+  **edpm** borrows CGet's simplicity while adding features like environment management and manifest/lock files.
 
 ---
 
@@ -143,7 +155,7 @@ include("/path/to/install/dir/EDPMToolchain.cmake")
 
 ### Using Pre-installed Packages
 
-If you already have packages installed that you want to integrate:
+If you already have packages installed, that you want to integrate:
 
 ```bash
 # Reference an existing ROOT installation

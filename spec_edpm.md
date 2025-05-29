@@ -1,6 +1,4 @@
-Below is a **developer-ready specification** that captures the overall **requirements**, **architecture choices**, *
-*data handling**, **error handling**, and **testing plan** for the next-generation EDPM. It is distilled from all prior
-discussion and is intended to give new developers a clear roadmap for implementing (and extending) EDPM.
+Below is a **developer-ready specification** that captures the overall **requirements**, **architecture choices**, **data handling**, **error handling**, and **testing plan** for the next-generation EDPM. It is distilled from all prior discussion and is intended to give new developers a clear roadmap for implementing (and extending) EDPM.
 
 ---
 
@@ -11,7 +9,7 @@ discussion and is intended to give new developers a clear roadmap for implementi
 1. **Manage external C++ (and optionally Python) packages** in a way that is:
     - **Decoupled from CMake** (i.e., EDPM can fetch and build dependencies in a standalone manner, independent of any
       particular build system).
-    - **Integrates with CMake** through generated configuration files (so that a user’s CMake project can easily locate
+    - **Integrates with CMake** through generated configuration files (so that a user's CMake project can easily locate
       the installed dependencies).
     - **Remains flexible** enough to handle non-CMake packages (Autotools, manual, Python libraries, etc.) by falling
       back to environment-variable–based consumption.
@@ -22,12 +20,12 @@ discussion and is intended to give new developers a clear roadmap for implementi
     - **Lock file** (`plan-lock.edpm.yaml`) records *where* they were installed and *exact configuration details* when it
       was installed, ensuring reproducibility.
 
-3. **Keep the dependency graph simple**:
-    - EDPM **does not** attempt advanced resolution of version conflicts or deep transitive dependencies. Instead, each
-      user-labeled package is installed in a straightforward manner with minimal “chaining.”
-    - If package A depends on package B, the user ensures that B is "above in the manifest", 
-      i.e. installed (or references it) in a manner consistent with the user’s environment.
-    - There is a helper methods to suggest which **external**, i.e. system or other packet managers dependencies 
+3. **User controlled dependency graph**:
+    - EDPM **does not** attempt automatic resolution of version conflicts or deep transitive dependencies. 
+      Instead, each user-labeled package is installed in a straightforward user defined order
+    - If package A depends on package B, the user ensures that B is "above in the manifest/plan file", 
+      i.e. installed (or references it) in a manner consistent with user's intent.
+    - There are helper methods to suggest which **external**, i.e. system or other packet managers dependencies 
       one may need to install. But those are no more than suggestions to user. 
 
 ---
@@ -50,14 +48,14 @@ Below is a conceptual overview of how EDPM v3 works:
     - A YAML file that stores:
         - The final location of each dependency (`install_path`, any discovered install subfolders).
         - The combined config that was actually used to build (in case defaults or global overrides were merged).
-        - The “installed” state, so EDPM knows if a package is up-to-date or not.
+        - The "installed" state, so EDPM knows if a package is up-to-date or not.
 
 3. **Recipes**
     - **Base `Recipe` class**: abstract structure with typical lifecycle steps: `fetch()`, `patch()`, `build()`,
       `install()`, and `post_install()`.
     - **Common Derivatives**:
         - `GitCmakeRecipe` for Git + CMake–based software.
-        - `ManualRecipe` for user-installed or pre-built software that just needs to be “registered.”
+        - `ManualRecipe` for user-installed or pre-built software that just needs to be "registered."
         - `TarballRecipe` for .tar.gz–based packages (Autotools, etc.).
         - Additional specialized recipes (e.g., `RootRecipe`, `Pythia8Recipe`, etc.).
     - Some number of specialized recipes with predefined configs - for common NP packages such as cern root, geant4, etc.
@@ -68,14 +66,14 @@ Below is a conceptual overview of how EDPM v3 works:
 
 4. **Environment and CMake Integration**
     - **Environment scripts**: EDPM generates shell scripts (e.g., `env.sh` and `env.csh`) that contain all environment
-      updates from *all* installed packages. Sourcing them in the user’s shell makes all packages visible to other
+      updates from *all* installed packages. Sourcing them in the user's shell makes all packages visible to other
       build systems.
     - **CMake configuration**: EDPM can  generate cmake preset file with the intended configuations. 
     - or equivalently load a single `EDPMConfig.cmake`. This bridging is especially helpful for purely CMake-based
       consumers.
 
 5. **Command-Line Interface (CLI)**
-    - **`init`**: Creates a minimal `plan.edpm.yaml` if one doesn’t exist.
+    - **`init`**: Creates a minimal `plan.edpm.yaml` if one doesn't exist. Supports templates for different experiment setups.
     - **`add`**: Adds a new dependency entry to the manifest.
     - **`install`**: Installs packages (either all missing or specific ones).
     - **`env`**: Displays or regenerates the environment scripts.
@@ -83,6 +81,12 @@ Below is a conceptual overview of how EDPM v3 works:
     - **`config`**: Updates or displays configuration options for packages or global config.
     - **`pwd`** / `set` / `rm` / `clean` etc.: Additional housekeeping commands for pointing EDPM to pre-existing
       installs or removing them.
+
+6. **Templates System**
+    - **Pre-configured plan templates** for different experiments and use cases stored in `edpm/templates/`
+    - **Template discovery** automatically finds available templates
+    - **Experiment-specific setups** like EIC, TDIS, minimal, or comprehensive configurations
+    - **Easy initialization** with `edpm init -t <template>` for quick project bootstrap
 
 ---
 
@@ -117,7 +121,7 @@ Below is a conceptual overview of how EDPM v3 works:
 
 3. **Recipes (`Recipe` hierarchy)**
     - Each recipe has:
-        - A unique `name` identifier (the “key” used by the user).
+        - A unique `name` identifier (the "key" used by the user).
         - A `config` dictionary storing recipe-specific build instructions (e.g., `repo_address`, `branch`,
           `cmake_flags`, etc.).
         - Lifecycle methods: `fetch()`, `patch()`, `build()`, `install()`, `post_install()`.
@@ -131,9 +135,9 @@ Below is a conceptual overview of how EDPM v3 works:
     - Each action can produce:
         - **Bash** snippet.
         - **csh** snippet.
-        - (Optionally) a “python environment” update in-process.
+        - (Optionally) a "python environment" update in-process.
 
-5. **Using “Previous” Packages** in Build Steps
+5. **Using "Previous" Packages** in Build Steps
     - For CMake-based recipes, EDPM can pass `-DCMAKE_PREFIX_PATH=<path>` for each previously installed dependency. That
       path is discovered from the lock file.
     - For non-CMake or in-process builds, EDPM sets environment variables (e.g., `export PATH=...`) before `make` or
@@ -141,18 +145,31 @@ Below is a conceptual overview of how EDPM v3 works:
     - In practice, the API merges known installed packages into the environment or CMake flags (depending on the
       recipe).
 
+6. **Templates System**
+    - **Template Files**: YAML files stored in `edpm/templates/` directory following the naming convention `<template-name>-plan.edpm.yaml`
+    - **Template Discovery**: Automatic detection of available templates using package introspection
+    - **Template Categories**:
+        - `default` - Basic template with examples and comments (original behavior)
+        - `minimal` - Minimal setup with just essential packages (ROOT)
+        - `full` - Comprehensive template with most available packages
+        - `eic` - Electron-Ion Collider experiment software stack
+        - `tdis` - Tagged Deep Inelastic Scattering experiment setup
+    - **Template Content**: Pre-configured plan files with appropriate packages, versions, and system requirements for specific use cases
+
 ---
 
 ## 4. **Core Workflow**
 
 1. **Initialization**
-    - `edpm init` writes a minimal `plan.edpm.yaml` if none exists.
+    - `edpm init` writes a minimal `plan.edpm.yaml` using the default template if none exists.
+    - `edpm init -t <template>` writes a plan file using a specific template (e.g., `eic`, `tdis`, `minimal`, `full`).
+    - `edpm init --list-templates` shows all available templates.
     - For existing projects, the developer hand-edits or `edpm add`s packages.
 
 2. **Install**
     1. EDPM reads the manifest and lock file.
-    2. Merges the user’s **global config** with each dependency’s **config**.
-    3. For each dependency in the user-specified install list (or all “missing”):
+    2. Merges the user's **global config** with each dependency's **config**.
+    3. For each dependency in the user-specified install list (or all "missing"):
         - If not already installed (i.e., lock file has no valid `install_path`), EDPM:
             - Prepares environment 
             - **Instantiates** the appropriate recipe class.
@@ -168,7 +185,7 @@ Below is a conceptual overview of how EDPM v3 works:
         - For each, calls `recipe.gen_env()` to gather environment actions.
         - Writes aggregated output to `env.sh` and `env.csh`.
         - Writes edpm cmake preset file.
-        - Writes or updates a `EDPMConfig.cmake` (or similarly named file) so that a user’s CMake can do
+        - Writes or updates a `EDPMConfig.cmake` (or similarly named file) so that a user's CMake can do
           `find_package()` or at least get the right `CMAKE_PREFIX_PATH`.
 
 4. **Usage in a Build System**
@@ -179,6 +196,12 @@ Below is a conceptual overview of how EDPM v3 works:
             3. Or `include(/path/to/EDPMConfig.cmake)` inside their own CMakeLists.
     - **Non-CMake** usage:
         - Rely purely on the environment script (`env.sh` or `env.csh`).
+
+5. **Template Usage Workflow**
+    - **Template Discovery**: `edpm init --list-templates` shows available experiment setups
+    - **Quick Start**: `edpm init -t eic` creates a ready-to-use EIC software stack configuration
+    - **Customization**: Users can modify the generated plan file to add/remove packages or adjust configurations
+    - **Reproducibility**: Templates provide known-good configurations that can be shared across teams
 
 ---
 
@@ -200,12 +223,17 @@ Below is a conceptual overview of how EDPM v3 works:
     - If the lock file references an installed path that no longer exists on disk, EDPM can warn and optionally
       re-install if the user sets `--force`.
 
-4. **Topological or “Missing Dep” Errors**
-    - Because EDPM does not do a robust dependency resolution, any “dep chaining” is effectively user-driven. If a
+4. **Topological or "Missing Dep" Errors**
+    - Because EDPM does not do a robust dependency resolution, any "dep chaining" is effectively user-driven. If a
       recipe absolutely cannot build without a prior dependency, it should either:
         - Attempt to read it from the lock file environment, or
         - Raise an error if not found.
     - This keeps the system simpler while ensuring clarity for the developer.
+
+5. **Template-Related Errors**
+    - If a requested template does not exist, EDPM provides a clear error message listing available templates
+    - If the templates directory is missing or inaccessible, EDPM falls back to default behavior
+    - Template loading failures are handled gracefully with informative error messages
 
 ---
 
@@ -223,33 +251,124 @@ To ensure correctness and maintainability, the following **test strategy** is re
     - **Environment Action**:
         - `Set`, `Append`, `Prepend`, `RawText` produce the right shell lines.
         - Confirm that Python environment is updated in-process as expected.
+    - **Templates System**:
+        - Template discovery and listing functionality
+        - Template loading for each available template
+        - Error handling for missing templates and directories
+        - Template content validation
 
 2. **Integration / Smoke Tests**:
     - **Local ephemeral directories**:
-        - Make a small “hello world” Git + CMake project. Add it to a test manifest. Run `edpm install` and confirm the
+        - Make a small "hello world" Git + CMake project. Add it to a test manifest. Run `edpm install` and confirm the
           final artifacts are placed in the lock file.
     - **ManualRecipe**:
-        - Provide a “fake” manual dependency and confirm `ld_library_path` is appended properly.
+        - Provide a "fake" manual dependency and confirm `ld_library_path` is appended properly.
     - **Check synergy**:
         - Install a second package that references the first via environment or CMake. Confirm it sees the first
-          package’s location.
+          package's location.
+    - **Template Integration**:
+        - Test `edpm init -t <template>` creates valid plan files
+        - Test template-generated plans can be successfully installed
+        - Test template content matches expected packages and configurations
 
 3. **System / End-to-End Tests** (Optional in CI if time allows):
     - A Docker-based approach that uses a real minimal OS image (e.g., Ubuntu 20.04) to test installing a known set of
-      “real” scientific dependencies (ROOT, Geant4, etc.). This ensures the entire chain works.
+      "real" scientific dependencies (ROOT, Geant4, etc.). This ensures the entire chain works.
+    - Test full workflow using templates: `edpm init -t eic` → `edpm install` → verify all packages installed correctly
 
 4. **Error-Handling Cases**:
     - **Missing config**: Attempt to install a Git recipe with no `repo_address`. Confirm EDPM halts with a readable
       error.
     - **Lock file mismatch**: Remove the installed path from disk. Re-run `edpm install`. Check it suggests
       re-installation or uses `--force`.
+    - **Template errors**: Request non-existent template, test with missing templates directory, verify error messages include available options
 
 By covering these levels of testing, developers can be confident that EDPM remains stable and consistent even as new
-recipes or features are introduced.
+recipes, templates, or features are introduced.
 
 ---
 
-## 7. **Summary and Next Steps**
+## 7. **Templates System Detail**
+
+### 7.1 **Template Architecture**
+
+The templates system provides pre-configured plan files for common experiment setups and use cases:
+
+- **Template Storage**: Templates are stored in `edpm/templates/` directory as YAML files
+- **Naming Convention**: Template files follow the pattern `<template-name>-plan.edpm.yaml`
+- **Discovery Mechanism**: Templates are automatically discovered using Python package introspection
+- **Template Categories**: Different templates serve different scientific computing communities
+
+### 7.2 **Available Templates**
+
+1. **default** (`default-plan.edpm.yaml`)
+   - Basic template with examples and extensive comments
+   - Provides guidance for manual configuration
+   - Same content as the original hardcoded template
+
+2. **minimal** (`minimal-plan.edpm.yaml`)
+   - Just ROOT framework and basic build requirements
+   - Ideal for simple data analysis projects
+   - Minimal system dependencies
+
+3. **full** (`full-plan.edpm.yaml`)
+   - Comprehensive template with most available packages
+   - Many packages commented out for user selection
+   - Complete system requirements for all supported packages
+   - Good reference for available options
+
+4. **eic** (`eic-plan.edpm.yaml`)
+   - Electron-Ion Collider experiment software stack
+   - Includes: ROOT, Geant4, DD4hep, EPIC, EICRecon, ACTS, etc.
+   - EIC-specific system requirements and versions
+   - Optimized for EIC physics simulations and analysis
+
+5. **tdis** (`tdis-plan.edpm.yaml`)
+   - Tagged Deep Inelastic Scattering experiment setup
+   - Includes: ROOT, Geant4, JANA2, EVIO, etc.
+   - JLab-specific packages and nuclear physics tools
+   - Optimized for nuclear physics experiments
+
+### 7.3 **Template CLI Commands**
+
+```bash
+# List all available templates
+edpm init --list-templates
+
+# Initialize with specific template
+edpm init -t eic
+edpm init -t tdis  
+edpm init -t minimal
+edpm init -t full
+
+# Force overwrite existing plan file
+edpm init -t eic --force
+
+# Default behavior (uses default template)
+edpm init
+```
+
+### 7.4 **Creating New Templates**
+
+To add a new template:
+
+1. Create `<template-name>-plan.edpm.yaml` in `edpm/templates/`
+2. Follow standard EDPM plan file format
+3. Include appropriate packages, versions, and system requirements
+4. Add comments explaining the template's purpose
+5. Test with `edpm init -t <template-name>`
+
+### 7.5 **Template Benefits**
+
+- **Reduced Setup Time**: Instant configuration for specific experiments
+- **Best Practices**: Templates encode known-good configurations
+- **Consistency**: Teams can share standardized setups
+- **Education**: Templates show proper EDPM plan file structure
+- **Maintenance**: Centralized maintenance of experiment-specific configurations
+
+---
+
+## 8. **Summary and Next Steps**
 
 With this specification, a developer can immediately begin:
 
@@ -257,25 +376,27 @@ With this specification, a developer can immediately begin:
    preservation.
 2. **Completing** any missing recipes or integrating them in the `RecipeManager`.
 3. **Refining** the CLI commands (`init`, `add`, `install`, `env`, etc.) based on the described workflow.
-4. **Writing** automated tests according to the above plan, ensuring coverage of corner cases.
+4. **Creating and maintaining** templates for different experiment setups in `edpm/templates/`.
+5. **Writing** automated tests according to the above plan, ensuring coverage of corner cases and template functionality.
 
 This design gives EDPM v3 a **clear, maintainable architecture** that:
 
 - Manages dependencies in a **manifest/lock** style,
 - Provides both **shell environment** and **CMake-based** consumption,
 - Accommodates both **CMake** and **non-CMake** dependencies,
+- Offers **quick project bootstrap** through experiment-specific templates,
 - Keeps the approach **lightweight** and **developer-friendly**.
 
 Once implemented, EDPM offers a reproducible, easily scriptable approach to installing (and reusing) scientific software
-packages—*without* the overhead or complexity of larger package managers.
+packages—*without* the overhead or complexity of larger package managers, while providing the convenience of ready-to-use configurations for common experimental setups.
 
-Below is an **updated specification** for EDPM v3 that incorporates the **input/output file** mechanism for environment and CMake integration scripts. This update clarifies how users can configure **“in/out”** files (e.g., `env_bash_in`, `env_bash_out`, `cmake_toolchain_in`, `cmake_toolchain_out`, etc.) within the **global** config of their **Plan** file.
+Below is an **updated specification** for EDPM v3 that incorporates the **input/output file** mechanism for environment and CMake integration scripts. This update clarifies how users can configure **"in/out"** files (e.g., `env_bash_in`, `env_bash_out`, `cmake_toolchain_in`, `cmake_toolchain_out`, etc.) within the **global** config of their **Plan** file.
 
 ---
 
-## 8. **Additional Global Configuration: In/Out Files**
+## 9. **Additional Global Configuration: In/Out Files**
 
-A key enhancement is that **EDPM** can **merge** or **append** its generated output into “existing” user files, or produce brand new files. This is controlled by **in** and **out** file variables in the **global config** block of the Plan. For each integration script, you can set:
+A key enhancement is that **EDPM** can **merge** or **append** its generated output into "existing" user files, or produce brand new files. This is controlled by **in** and **out** file variables in the **global config** block of the Plan. For each integration script, you can set:
 
 - **`env_bash_in` / `env_bash_out`**
    - If you specify `env_bash_in`, EDPM will read that file as a **template**. It looks for a marker line like
@@ -295,7 +416,7 @@ A key enhancement is that **EDPM** can **merge** or **append** its generated out
      ```cmake
      # {{{EDPM-GENERATOR-CONTENT}}}
      ```  
-     If found, it replaces that line with EDPM’s auto-generated lines. If not found, EDPM appends.
+     If found, it replaces that line with EDPM's auto-generated lines. If not found, EDPM appends.
    - Then writes the final result to `cmake_toolchain_out`.
 
 - **`cmake_presets_in` / `cmake_presets_out`**
@@ -322,7 +443,7 @@ global:
 
 When running `edpm env save`, EDPM merges the generated content with those input files (if present) and writes the results to the specified output files.
 
-**If any “_out” variable is empty or missing, EDPM does not save** that specific file (and may display a warning). If any “_in” variable is empty, EDPM simply **doesn’t** do the merging logic and either writes a brand-new file (if `_out` is set) or prints a warning.
+**If any "_out" variable is empty or missing, EDPM does not save** that specific file (and may display a warning). If any "_in" variable is empty, EDPM simply **doesn't** do the merging logic and either writes a brand-new file (if `_out` is set) or prints a warning.
 
 **Out files default location:** 
 

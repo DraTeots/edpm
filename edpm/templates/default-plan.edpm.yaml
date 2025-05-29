@@ -1,0 +1,54 @@
+# EDPM Manifest Template
+# ----------------------
+# This file defines:
+#   1) A 'global' section for top-level build and environment settings
+#   2) A 'dependencies' array of packages that EDPM will install or manage
+
+# Global configuration block
+global:
+  # cxx_standard: 20      # e.g. 17, 20, 23 for C++
+  # build_threads: 8      # Number of parallel build threads
+  environment:
+    # - set:
+    #     GLOBAL_VAR: "global_value"
+    # - prepend:
+    #     PATH: "/usr/local/global/bin"
+    # - append:
+    #     PYTHONPATH: "/usr/local/global/python"
+
+# Dependencies array
+packages:
+  # Example 1: A pre-installed dependency ("manual" recipe)
+  # - recipe: manual
+  #   name: local_root
+  #   location: "/opt/myroot"
+  #   environment:
+  #     - set:
+  #         ROOTSYS: "$location"
+  #     - prepend:
+  #         PATH: "$location/bin"
+  #     - prepend:
+  #         LD_LIBRARY_PATH: "$location/lib"
+
+  # Example 2: A GitHub + CMake-based dependency
+  # - recipe: github-cmake-cpp
+  #   name: MyLib
+  #   repo_address: "https://github.com/example/mylib.git"
+  #   branch: "main"
+  #   cmake_flags: "-DENABLE_FOO=ON"
+  #   environment:
+  #     - prepend:
+  #         PATH: "$install_dir/bin"
+  #     - prepend:
+  #         LD_LIBRARY_PATH: "$install_dir/lib"
+
+  # Example 3: Another approach for system-level libraries
+  # - recipe: manual
+  #   name: system_eigen
+  #   location: "/usr/include/eigen3"
+  #   environment:
+  #     - set:
+  #         EIGEN_HOME: "$location"
+
+  # require:
+  #   apt: [ libeigen3-dev ]
