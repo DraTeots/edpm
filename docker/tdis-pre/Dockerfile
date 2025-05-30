@@ -17,10 +17,6 @@ WORKDIR ${APP_ROOT}
 # Install EDPM v3 and set the top_dir
 RUN python3 -m pip install --user --upgrade --force-reinstall --break-system-packages edpm
 
-# Install OS dependencies
-#RUN apt-get update &&\
-#    apt-get install -y libfmt-dev &&\
-#    apt-get clean && apt-get autoremove -y && rm -rf /var/lib/apt/lists/*
 
 # Add and instantly install
 RUN edpm install -a fmt@11.2.0
@@ -42,10 +38,26 @@ RUN edpm add podio && \
     edpm clean podio
 
 
+# Install OS dependencies
+RUN apt-get update &&\
+    apt-get install -y libfmt-dev libboost-filesystem-dev libboost-all-dev libspdlog-dev libboost-test-dev libxmu-dev libexpat-dev libtbb-dev &&\
+    apt-get clean && apt-get autoremove -y && rm -rf /var/lib/apt/lists/*
+
 # -------------------
 # ACTS
 # -------------------
 ARG VERSION_ACTS=v41.0.0
+RUN edpm install -a eigen3@3.4.0 && edpm clean eigen3
+RUN edpm add hepmc3 && \
+    edpm config hepmc3 version=3.3.1 \
+    edpm config hepmc3 cmake_user_flags="\
+    -DHEPMC3_ENABLE_PYTHON:BOOL=OFF \
+    -DPython_LIBRARIES=/usr/lib/python3.12/config-3.12-x86_64-linux-gnu \
+    -DPython_EXECUTABLE=/usr/bin/python3 \
+    -DPython_INCLUDE_DIRS=/usr/include/python3.12 \
+    " && \
+    edpm install hepmc3 && \
+    edpm clean hepmc3
 
 RUN edpm add acts && \
     edpm config acts branch=${VERSION_ACTS} && \
@@ -57,8 +69,8 @@ RUN edpm add acts && \
     -DACTS_BUILD_PLUGIN_ACTSVG=OFF \
     -DACTS_BUILD_PLUGIN_DD4HEP=OFF \
     " && \
-    edpm install acts
-
+    edpm install acts &&\
+    edpm clean acts
 
 
 # -------------------

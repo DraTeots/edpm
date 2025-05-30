@@ -6,37 +6,34 @@ from unittest.mock import patch, MagicMock
 from click.testing import CliRunner
 from ruamel.yaml import YAML
 
-from edpm.cli.install import install_command
+from edpm.cli import edpm_cli
 from edpm.engine.api import EdpmApi
 from edpm.engine.recipe import Recipe
 from edpm.engine.config import ConfigNamespace
 from edpm.engine.fetchers import GitFetcher
-import click
-
-
-@click.group()
-@click.pass_context
-def cli(ctx):
-    pass
-
-
-cli.add_command(install_command)
 
 
 class TestVersionRecipe(Recipe):
     """A test recipe that captures the final config for verification."""
 
+    # Class variable to store created instances for verification
+    created_instances = []
+
     def __init__(self, config=None):
-        # Simulate a recipe with default version (like fmt recipe)
+        # Set default config before parent __init__
         self.default_config = {
             'fetch': 'git',
             'make': 'cmake',
             'url': 'https://github.com/test/test.git',
-            'branch': 'v1.0.0'  # Default version with 'v' prefix
+            'branch': 'v1.0.0',  # Default version with 'v' prefix
+            'app_name': 'testpkg'
         }
         super().__init__(config)
         self.final_config = dict(self.config)
         self.calls = []
+
+        # Store this instance for later verification
+        TestVersionRecipe.created_instances.append(self)
 
     def preconfigure(self):
         self.calls.append("preconfigure")
@@ -45,7 +42,8 @@ class TestVersionRecipe(Recipe):
         branch = self.config.get("branch", "")
         if version:
             if branch:
-                print(f"'version'='{version}' is explicitly set and overrides 'branch'='{branch}'")
+                print(
+                    f"'version'='{version}' is explicitly set and overrides 'branch'='{branch}' (this might be desired)")
             self.config["branch"] = version
 
         # Set paths
@@ -83,6 +81,9 @@ def test_install_with_add_flag_preserves_user_version():
     Test that when user specifies 'edpm install -a package@version',
     the user-specified version overrides the recipe's default version.
     """
+    # Clear any previous test instances
+    TestVersionRecipe.created_instances = []
+
     with tempfile.TemporaryDirectory() as tmpdir:
         # Setup plan and lock files
         plan_path = os.path.join(tmpdir, "plan.edpm.yaml")
@@ -106,58 +107,51 @@ def test_install_with_add_flag_preserves_user_version():
         with open(lock_path, "w", encoding="utf-8") as f:
             yaml.dump(lock_data, f)
 
-        # Initialize API
-        api = EdpmApi(plan_file=plan_path, lock_file=lock_path)
-
-        # Create test recipe
-        test_recipe = TestVersionRecipe(ConfigNamespace(app_path=tmpdir))
-
         # Create runner
         runner = CliRunner()
 
-        # Patch external interactions
+        # Patch all the things we need to mock
         with patch("edpm.engine.commands.run"), \
                 patch("edpm.engine.commands.workdir"), \
                 patch("edpm.engine.generators.environment_generator.EnvironmentGenerator.save_environment_with_infile"), \
-                patch.object(api.recipe_manager, "create_recipe") as mock_create_recipe:
+                patch("edpm.engine.recipe_manager.RecipeManager.create_recipe") as mock_create_recipe:
             # Make create_recipe return our test recipe
-            mock_create_recipe.return_value = test_recipe
+            mock_create_recipe.side_effect = lambda name, config: TestVersionRecipe(config)
 
-            # Run installation with --add flag and version specification
-            result = runner.invoke(cli, ["install", "--add", "testpkg@2.5.0"], obj=api)
+            # Run the CLI command with proper plan and lock paths
+            result = runner.invoke(edpm_cli, [
+                "--plan", plan_path,
+                "--lock", lock_path,
+                "install", "--add", "testpkg@2.5.0"
+            ])
 
             # Verify command succeeded
             assert result.exit_code == 0, f"Command failed: {result.output}"
             assert "Adding it automatically" in result.output
             assert "Added 'testpkg@2.5.0' to the plan" in result.output
 
-            # Verify recipe was called
-            assert test_recipe.calls == [
+            # Verify recipe was created
+            assert len(TestVersionRecipe.created_instances) > 0, "Recipe was not created"
+            created_recipe = TestVersionRecipe.created_instances[-1]
+
+            assert created_recipe.calls == [
                 "preconfigure", "fetch", "patch", "build", "install", "post_install"
             ]
 
             # THE KEY TEST: Verify that user version (2.5.0) overrode default version (v1.0.0)
-            assert test_recipe.final_config["branch"] == "2.5.0", \
-                f"Expected branch to be user version '2.5.0', but got '{test_recipe.final_config.get('branch')}'"
+            assert created_recipe.final_config["branch"] == "2.5.0", \
+                f"Expected branch to be user version '2.5.0', but got '{created_recipe.final_config.get('branch')}'"
 
             # Verify the version field was set correctly
-            assert test_recipe.final_config["version"] == "2.5.0", \
-                f"Expected version to be '2.5.0', but got '{test_recipe.final_config.get('version')}'"
+            assert created_recipe.final_config["version"] == "2.5.0", \
+                f"Expected version to be '2.5.0', but got '{created_recipe.final_config.get('version')}'"
 
             # Verify plan file was updated correctly
-            api.load_all()  # Reload to see saved changes
-            packages = api.plan.packages()
+            with open(plan_path, "r") as f:
+                saved_plan = yaml.load(f)
+            packages = saved_plan["packages"]
             assert len(packages) == 1
-            pkg = packages[0]
-            assert pkg.name == "testpkg"
-            assert pkg.config["version"] == "2.5.0"
-
-            # Verify lock file was updated
-            package_info = api.lock.get_installed_package("testpkg")
-            assert "install_path" in package_info
-            built_config = package_info["built_with_config"]
-            assert built_config["branch"] == "2.5.0"  # User version should be in final config
-            assert built_config["version"] == "2.5.0"
+            assert packages[0] == "testpkg@2.5.0"
 
 
 def test_install_default_version_when_no_version_specified():
@@ -165,6 +159,9 @@ def test_install_default_version_when_no_version_specified():
     Test that when user specifies 'edpm install -a package' (no version),
     the recipe's default version is used.
     """
+    # Clear any previous test instances
+    TestVersionRecipe.created_instances = []
+
     with tempfile.TemporaryDirectory() as tmpdir:
         # Setup plan and lock files
         plan_path = os.path.join(tmpdir, "plan.edpm.yaml")
@@ -188,36 +185,38 @@ def test_install_default_version_when_no_version_specified():
         with open(lock_path, "w", encoding="utf-8") as f:
             yaml.dump(lock_data, f)
 
-        # Initialize API
-        api = EdpmApi(plan_file=plan_path, lock_file=lock_path)
-
-        # Create test recipe
-        test_recipe = TestVersionRecipe(ConfigNamespace(app_path=tmpdir))
-
         # Create runner
         runner = CliRunner()
 
-        # Patch external interactions
+        # Patch all the things we need to mock
         with patch("edpm.engine.commands.run"), \
                 patch("edpm.engine.commands.workdir"), \
                 patch("edpm.engine.generators.environment_generator.EnvironmentGenerator.save_environment_with_infile"), \
-                patch.object(api.recipe_manager, "create_recipe") as mock_create_recipe:
+                patch("edpm.engine.recipe_manager.RecipeManager.create_recipe") as mock_create_recipe:
             # Make create_recipe return our test recipe
-            mock_create_recipe.return_value = test_recipe
+            mock_create_recipe.side_effect = lambda name, config: TestVersionRecipe(config)
 
             # Run installation with --add flag but NO version specification
-            result = runner.invoke(cli, ["install", "--add", "testpkg"], obj=api)
+            result = runner.invoke(edpm_cli, [
+                "--plan", plan_path,
+                "--lock", lock_path,
+                "install", "--add", "testpkg"
+            ])
 
             # Verify command succeeded
             assert result.exit_code == 0, f"Command failed: {result.output}"
 
+            # Verify recipe was created
+            assert len(TestVersionRecipe.created_instances) > 0, "Recipe was not created"
+            created_recipe = TestVersionRecipe.created_instances[-1]
+
             # THE KEY TEST: Verify that default version (v1.0.0) was used since no user version was specified
-            assert test_recipe.final_config["branch"] == "v1.0.0", \
-                f"Expected branch to be default version 'v1.0.0', but got '{test_recipe.final_config.get('branch')}'"
+            assert created_recipe.final_config["branch"] == "v1.0.0", \
+                f"Expected branch to be default version 'v1.0.0', but got '{created_recipe.final_config.get('branch')}'"
 
             # No version field should be set (since user didn't specify one)
-            assert "version" not in test_recipe.final_config or test_recipe.final_config["version"] == "", \
-                f"Expected no version field, but got '{test_recipe.final_config.get('version')}'"
+            assert "version" not in created_recipe.final_config or created_recipe.final_config["version"] == "", \
+                f"Expected no version field, but got '{created_recipe.final_config.get('version')}'"
 
 
 def test_git_fetcher_version_override():

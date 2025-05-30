@@ -41,7 +41,7 @@ def test_install_no_arguments(mock_edpm_api, cli_runner):
     # Verify
     assert result.exit_code == 0, f"Command failed with error: {result.output}"
 
-    # Should call install_dependency_chain with all package names
+    # Should call install_dependency_chain with all package names as a list
     mock_edpm_api.install_dependency_chain.assert_called_once_with(
         dep_names=["pkg1", "pkg2"],
         explain=False,
@@ -85,9 +85,9 @@ def test_install_with_specific_package(mock_edpm_api, cli_runner):
     # Should check if package exists
     mock_edpm_api.plan.has_package.assert_called_once_with("pkg1")
 
-    # Should call install_dependency_chain with the specified package
+    # Should call install_dependency_chain with the specified package as a list
     mock_edpm_api.install_dependency_chain.assert_called_once_with(
-        dep_names=("pkg1",),
+        dep_names=["pkg1"],
         explain=False,
         force=False
     )
@@ -132,9 +132,9 @@ def test_install_package_not_in_plan_with_add_flag(mock_edpm_api, cli_runner):
     mock_edpm_api.plan.add_package.assert_called_once_with("pkg1")
     mock_edpm_api.plan.save.assert_called_once_with(mock_edpm_api.plan_file)
 
-    # Should call install_dependency_chain
+    # Should call install_dependency_chain with a list
     mock_edpm_api.install_dependency_chain.assert_called_once_with(
-        dep_names=("pkg1",),
+        dep_names=["pkg1"],
         explain=False,
         force=False
     )
@@ -162,9 +162,9 @@ def test_install_multiple_packages_with_add_flag(mock_edpm_api, cli_runner):
     mock_edpm_api.plan.add_package.assert_called_once_with("pkg2")
     mock_edpm_api.plan.save.assert_called_once_with(mock_edpm_api.plan_file)
 
-    # Should call install_dependency_chain with both packages
+    # Should call install_dependency_chain with both packages as a list
     mock_edpm_api.install_dependency_chain.assert_called_once_with(
-        dep_names=("pkg1", "pkg2"),
+        dep_names=["pkg1", "pkg2"],
         explain=False,
         force=False
     )
@@ -183,9 +183,9 @@ def test_install_with_explain_flag(mock_edpm_api, cli_runner):
     # Verify
     assert result.exit_code == 0, f"Command failed with error: {result.output}"
 
-    # Should call install_dependency_chain with explain=True
+    # Should call install_dependency_chain with explain=True and a list
     mock_edpm_api.install_dependency_chain.assert_called_once_with(
-        dep_names=("pkg1",),
+        dep_names=["pkg1"],
         explain=True,
         force=False
     )
@@ -207,9 +207,9 @@ def test_install_with_force_flag(mock_edpm_api, cli_runner):
     # Verify
     assert result.exit_code == 0, f"Command failed with error: {result.output}"
 
-    # Should call install_dependency_chain with force=True
+    # Should call install_dependency_chain with force=True and a list
     mock_edpm_api.install_dependency_chain.assert_called_once_with(
-        dep_names=("pkg1",),
+        dep_names=["pkg1"],
         explain=False,
         force=True
     )
@@ -231,9 +231,9 @@ def test_install_with_top_dir_flag(mock_edpm_api, cli_runner):
     # Should set top_dir
     assert mock_edpm_api.top_dir == "/custom/path"
 
-    # Then proceed with install
+    # Then proceed with install with a list
     mock_edpm_api.install_dependency_chain.assert_called_once_with(
-        dep_names=("pkg1",),
+        dep_names=["pkg1"],
         explain=False,
         force=False
     )
