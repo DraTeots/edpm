@@ -20,7 +20,7 @@ class Catch2Recipe(ComposedRecipe):
             'make': 'cmake',
             # This can be adjusted if you prefer a stable branch like 'v3.3.2'
             'url': 'https://github.com/catchorg/Catch2.git',
-            'branch': 'v3.8.0'
+            'branch': 'v3.8.1'
         }
         super().__init__(name='catch2', config=config)
 

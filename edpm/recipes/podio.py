@@ -18,7 +18,7 @@ class PodioRecipe(ComposedRecipe):
             'fetch': 'git',
             'make': 'cmake',
             'url': 'https://github.com/AIDASoft/podio.git',
-            'branch': 'v01-02'
+            'branch': 'v01-03'
         }
         super().__init__(name='podio', config=config)
 

@@ -2,11 +2,8 @@
 TL;DR;   
 
 ```bash
-pip install --upgrade pip
-pip install --upgrade setuptools wheel twine
-
-python3 -m build
-python3 -m twine upload dist/*
+# install edpm 'from this folder' with dev dependencies
+python -m pip install -e .[dev]
 
 # Under venv or conda: 
 python -m build && python -m twine upload dist/* 

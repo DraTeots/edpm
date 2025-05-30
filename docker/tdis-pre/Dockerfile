@@ -1,4 +1,6 @@
-# BUILDX_EXPERIMENTAL=1 docker buildx debug --invoke bash build --progress=plain
+# BUILDX_EXPERIMENTAL=1 docker buildx debug --invoke bash build --progress=plain .
+# in PShell instead of  BUILDX_EXPERIMENTAL=1 use:
+#   $env:BUILDX_EXPERIMENTAL="1"
 # docker buildx build --tag eicdev/tdis-pre:latest --push .
 # docker build -t eicdev/tdis-pre:latest .
 # docker build -t eicdev/tdis-pre:latest --build-arg BUILD_THREADS=24 .
@@ -9,27 +11,19 @@
 
 FROM eicdev/ubuntu-root:latest
 
-# Number of build threads
-ARG BUILD_THREADS=8
-ARG CXX_STANDARD=20
-ARG VERSION_JANA2=v2.4.0
 
 WORKDIR ${APP_ROOT}
-
-## For CI or final build steps (optional)
-#RUN apt-get update && \
-#    apt-get install -y clang-tools-18 clang-tidy dos2unix nlohmann-json3-dev&& \
-#    ln -s /usr/lib/llvm-18/bin/clang-scan-deps /usr/local/bin/clang-scan-deps && \
-#    rm -rf /var/lib/apt/lists/* \
 
 # Install EDPM v3 and set the top_dir
 RUN python3 -m pip install --user --upgrade --force-reinstall --break-system-packages edpm
 
 # Install OS dependencies
-RUN apt-get update &&\
-    apt-get install -y libfmt-dev &&\
-    apt-get clean && apt-get autoremove -y && rm -rf /var/lib/apt/lists/*
+#RUN apt-get update &&\
+#    apt-get install -y libfmt-dev &&\
+#    apt-get clean && apt-get autoremove -y && rm -rf /var/lib/apt/lists/*
 
+# Add and instantly install
+RUN edpm install -a fmt@11.2.0
 
 
 RUN edpm add catch2 && \
@@ -40,46 +34,37 @@ RUN edpm add catch2 && \
 # -------------------
 #   P O D I O
 # -------------------
-ARG PODIO_BRANCH=v01-03
-ARG PODIO_URL="https://github.com/AIDASoft/podio.git"
-ARG PODIO_SOURCE_PATH=${APP_PATH}/podio-source
-ARG PODIO_BUILD_PATH=${APP_PATH}/podio-build
-ARG PODIO_PATH=${APP_PATH}/podio
-RUN cmake -B ${PODIO_BUILD_PATH} \
-          -DCMAKE_INSTALL_PREFIX=${PODIO_PATH} \
-          -DCMAKE_CXX_STANDARD=${CXX_STANDARD} \
-            f"-DCMAKE_BUILD_TYPE={self.config['cmake_build_type']} "
-            f"{cmake_flags} "
-            f"{cmake_user_flags} "
-            f"{self.config['source_path']} "
-        )
-        self.config["build_cmd"] = f"cmake --build {build_path} -- -j {build_threads}"
-        self.config["install_cmd"] = f"cmake --build {build_path} --target install"
-
-RUN git clone --depth 1 -b ${PODIO_BRANCH} ${PODIO_URL} ${APP_ROOT}/podio-src
+ARG VERSION_PODIO=v01-03
 RUN edpm add podio && \
-   edpm config podio branch=${VERSION_PODIO} && \
-   edpm config podio cmake_flags="-DBUILD_TESTING=OFF" && \
-   edpm install podio \
+    edpm config podio branch=${VERSION_PODIO} && \
+    edpm config podio cmake_flags="-DBUILD_TESTING=OFF" && \
+    edpm install podio && \
+    edpm clean podio
 
 
-#
+# -------------------
 # ACTS
-#
-ARG ACTS_BRANCH=v41.0.0
-ARG ACTS_URL="https://gitlab.cern.ch/acts/acts-core"
+# -------------------
+ARG VERSION_ACTS=v41.0.0
 
-RUN git clone --depth 1 -b ${ACTS_BRANCH} ${ACTS_URL} ${APP_ROOT}/acts-src
 RUN edpm add acts && \
     edpm config acts branch=${VERSION_ACTS} && \
-    edpm config acts cmake_flags="-DACTS_BUILD_PLUGIN_TGEO=ON -DACTS_BUILD_PLUGIN_DD4HEP=ON -DACTS_BUILD_PLUGIN_JSON=ON -DACTS_BUILD_PLUGIN_ACTSVG=OFF -DACTS_BUILD_EXAMPLES_PYTHON_BINDINGS=ON -DACTS_BUILD_PLUGIN_TGEO=ON -DACTS_BUILD_PLUGIN_DD4HEP=OFF -DACTS_BUILD_PLUGIN_JSON=ON -DACTS_BUILD_PLUGIN_ACTSVG=OFF" && \
+    edpm config acts cmake_flags=" \
+    -DACTS_BUILD_PLUGIN_TGEO=ON \
+    -DACTS_BUILD_PLUGIN_JSON=ON  \
+    -DACTS_BUILD_EXAMPLES_PYTHON_BINDINGS=ON \
+    -DACTS_BUILD_PLUGIN_TGEO=ON  \
+    -DACTS_BUILD_PLUGIN_ACTSVG=OFF \
+    -DACTS_BUILD_PLUGIN_DD4HEP=OFF \
+    " && \
     edpm install acts
 
 
 
-#
-# 4) JANA2
-#
+# -------------------
+# JANA2
+# -------------------
+ARG VERSION_JANA2=v2.4.1
 RUN edpm add jana2 && \
    edpm config jana2 branch=${VERSION_JANA2} && \
    edpm config jana2 cmake_flags="-DUSE_PODIO=On -DUSE_ROOT=On -DCMAKE_BUILD_TYPE=Debug" && \
