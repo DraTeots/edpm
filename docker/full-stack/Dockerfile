@@ -161,14 +161,6 @@ RUN edpm add epic && \
 RUN edpm add eicrecon --option deps_only=true && \
     edpm install eicrecon --deps-only 
 
-# Install JupyterLab
-RUN python3 -m pip install --user jupyterlab
-
-# Add test notebook
-ADD test_jsroot.ipynb /home/eicuser/
 
 RUN echo "EDPMv3 build completed"
 
-CMD jupyter lab --ip=0.0.0.0 --no-browser \
-    --NotebookApp.custom_display_url=http://127.0.0.1:8888 \
-    --NotebookApp.token=''
