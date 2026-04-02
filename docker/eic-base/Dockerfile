@@ -30,12 +30,14 @@ RUN apt-get update && \
         libxerces-c3-dev libexpat-dev qtbase5-dev libqt5opengl5-dev libxmu-dev \
         libspdlog-dev libtbb-dev libboost-all-dev \
         libocct-foundation-dev occt-misc libocct-draw-dev libocct-data-exchange-dev \
+        libzmq3-dev python3-pybind11 \
     && apt-get clean && apt-get autoremove -y && rm -rf /var/lib/apt/lists/*
 
 
 ### ---------------------------------------------------------------------- ###
 ###          CLHEP build                                                   ###
 ### ---------------------------------------------------------------------- ###
+# spack: clhep @2.4.7.1 cxxstd=20
 ARG VERSION_CLHEP=CLHEP_2_4_7_1
 ENV CLHEP_SRC_PATH=${APP_ROOT}/clhep-src \
     CLHEP_BLD_PATH=${APP_ROOT}/clhep-build \
@@ -64,6 +66,7 @@ ENV CLHEP=${CLHEP_INS_PATH} \
 ### ---------------------------------------------------------------------- ###
 ###          Eigen3 build                                                  ###
 ### ---------------------------------------------------------------------- ###
+# spack: eigen @3.4.0
 ARG VERSION_EIGEN3=3.4.0
 ENV EIGEN3_SRC_PATH=${APP_ROOT}/eigen3-src \
     EIGEN3_BLD_PATH=${APP_ROOT}/eigen3-build \
@@ -85,6 +88,7 @@ ENV CMAKE_PREFIX_PATH="${EIGEN3_INS_PATH}/share/eigen3/cmake:${CMAKE_PREFIX_PATH
 ### ---------------------------------------------------------------------- ###
 ###          Catch2 build                                                  ###
 ### ---------------------------------------------------------------------- ###
+# spack: catch2 @3.4.0:
 ARG VERSION_CATCH2=v3.8.1
 ENV CATCH2_SRC_PATH=${APP_ROOT}/catch2-src \
     CATCH2_BLD_PATH=${APP_ROOT}/catch2-build \
@@ -108,13 +112,14 @@ ENV LD_LIBRARY_PATH="${CATCH2_INS_PATH}/lib:${LD_LIBRARY_PATH}" \
 ### ---------------------------------------------------------------------- ###
 ###          FastJet build (autotools)                                      ###
 ### ---------------------------------------------------------------------- ###
-ARG VERSION_FASTJET=3.4.3
+# spack: fastjet @3.5.0 plugins=cxx
+ARG VERSION_FASTJET=3.5.0
 ENV FASTJET_INS_PATH=${APP_ROOT}/fastjet
 
 RUN set -ex && \
     curl -L "https://fastjet.fr/repo/fastjet-${VERSION_FASTJET}.tar.gz" | tar xz -C "${APP_ROOT}" && \
     cd "${APP_ROOT}/fastjet-${VERSION_FASTJET}" && \
-    ./configure --prefix="${FASTJET_INS_PATH}" && \
+    ./configure --prefix="${FASTJET_INS_PATH}" --enable-allcxxplugins && \
     make -j"${BUILD_THREADS}" && \
     make install && \
     rm -rf "${APP_ROOT}/fastjet-${VERSION_FASTJET}"
@@ -127,7 +132,8 @@ ENV FASTJET_ROOT=${FASTJET_INS_PATH} \
 ### ---------------------------------------------------------------------- ###
 ###          HepMC3 build                                                  ###
 ### ---------------------------------------------------------------------- ###
-ARG VERSION_HEPMC3=3.3.1
+# spack: hepmc3 @3.3.0 +python +rootio
+ARG VERSION_HEPMC3=3.3.0
 ENV HEPMC3_SRC_PATH=${APP_ROOT}/hepmc3-src \
     HEPMC3_BLD_PATH=${APP_ROOT}/hepmc3-build \
     HEPMC3_INS_PATH=${APP_ROOT}/hepmc3
@@ -139,7 +145,8 @@ RUN set -ex && \
       -DCMAKE_INSTALL_PREFIX="${HEPMC3_INS_PATH}" \
       -DCMAKE_BUILD_TYPE=RelWithDebInfo \
       -DCMAKE_CXX_STANDARD=${CXX_STANDARD} \
-      -DHEPMC3_ENABLE_PYTHON=OFF \
+      -DHEPMC3_ENABLE_PYTHON=ON \
+      -DHEPMC3_ENABLE_ROOTIO=ON \
       "${HEPMC3_SRC_PATH}" && \
     cmake --build . --target install -j"${BUILD_THREADS}" && \
     rm -rf "${HEPMC3_BLD_PATH}" "${HEPMC3_SRC_PATH}"
@@ -153,7 +160,10 @@ ENV HEPMC3_DIR=${HEPMC3_INS_PATH} \
 ### ---------------------------------------------------------------------- ###
 ###          Geant4 build                                                  ###
 ### ---------------------------------------------------------------------- ###
-ARG VERSION_GEANT4=v11.3.0
+# spack: geant4 @11.3.2.east cxxstd=20 +threads +gdml +qt +x11
+# Note: spack uses a custom EIC-patched version (11.3.2.east); we use the
+#       official upstream tag v11.3.2.
+ARG VERSION_GEANT4=v11.3.2
 ENV GEANT4_SRC_PATH=${APP_ROOT}/geant4-src \
     GEANT4_BLD_PATH=${APP_ROOT}/geant4-build \
     GEANT4_INS_PATH=${APP_ROOT}/geant4
@@ -179,7 +189,7 @@ RUN set -ex && \
     cmake --build . --target install -j"${BUILD_THREADS}" && \
     rm -rf "${GEANT4_BLD_PATH}" "${GEANT4_SRC_PATH}"
 
-# NOTE: For runtime Geant4 data env vars, source ${GEANT4_INS_PATH}/bin/geant4.sh
+# NOTE: For Geant4 data environment variables, source ${GEANT4_INS_PATH}/bin/geant4.sh
 ENV PATH="${GEANT4_INS_PATH}/bin:${PATH}" \
     LD_LIBRARY_PATH="${GEANT4_INS_PATH}/lib:${LD_LIBRARY_PATH}" \
     CMAKE_PREFIX_PATH="${GEANT4_INS_PATH}:${CMAKE_PREFIX_PATH}"
@@ -188,7 +198,8 @@ ENV PATH="${GEANT4_INS_PATH}/bin:${PATH}" \
 ### ---------------------------------------------------------------------- ###
 ###          PODIO build                                                   ###
 ### ---------------------------------------------------------------------- ###
-ARG VERSION_PODIO=v01-03
+# spack: podio @1.6 cxxstd=20 +datasource +rntuple
+ARG VERSION_PODIO=v01-06
 ENV PODIO_SRC_PATH=${APP_ROOT}/podio-src \
     PODIO_BLD_PATH=${APP_ROOT}/podio-build \
     PODIO_INS_PATH=${APP_ROOT}/podio
@@ -201,6 +212,8 @@ RUN set -ex && \
       -DCMAKE_BUILD_TYPE=RelWithDebInfo \
       -DCMAKE_CXX_STANDARD=${CXX_STANDARD} \
       -DBUILD_TESTING=OFF \
+      -DENABLE_RNTUPLE=ON \
+      -DPODIO_BUILD_DATASOURCE=ON \
       "${PODIO_SRC_PATH}" && \
     cmake --build . --target install -j"${BUILD_THREADS}" && \
     rm -rf "${PODIO_BLD_PATH}" "${PODIO_SRC_PATH}"
@@ -213,6 +226,7 @@ ENV PODIO_ROOT=${PODIO_INS_PATH} \
 ### ---------------------------------------------------------------------- ###
 ###          VGM build                                                     ###
 ### ---------------------------------------------------------------------- ###
+# Not in spack EIC env; kept for compatibility with full-stack
 ARG VERSION_VGM=v5-3-1
 ENV VGM_SRC_PATH=${APP_ROOT}/vgm-src \
     VGM_BLD_PATH=${APP_ROOT}/vgm-build \
@@ -237,7 +251,8 @@ ENV VGM_DIR=${VGM_INS_PATH} \
 ### ---------------------------------------------------------------------- ###
 ###          EDM4HEP build                                                 ###
 ### ---------------------------------------------------------------------- ###
-ARG VERSION_EDM4HEP=v00-99-02
+# spack: edm4hep @0.99.4 cxxstd=20
+ARG VERSION_EDM4HEP=v00-99-04
 ENV EDM4HEP_SRC_PATH=${APP_ROOT}/edm4hep-src \
     EDM4HEP_BLD_PATH=${APP_ROOT}/edm4hep-build \
     EDM4HEP_INS_PATH=${APP_ROOT}/edm4hep
@@ -261,7 +276,8 @@ ENV LD_LIBRARY_PATH="${EDM4HEP_INS_PATH}/lib:${LD_LIBRARY_PATH}" \
 ### ---------------------------------------------------------------------- ###
 ###          EDM4EIC build                                                 ###
 ### ---------------------------------------------------------------------- ###
-ARG VERSION_EDM4EIC=v8.2.0
+# spack: edm4eic @8.8.0 cxxstd=20
+ARG VERSION_EDM4EIC=v8.8.0
 ENV EDM4EIC_SRC_PATH=${APP_ROOT}/edm4eic-src \
     EDM4EIC_BLD_PATH=${APP_ROOT}/edm4eic-build \
     EDM4EIC_INS_PATH=${APP_ROOT}/edm4eic
@@ -285,7 +301,8 @@ ENV LD_LIBRARY_PATH="${EDM4EIC_INS_PATH}/lib:${LD_LIBRARY_PATH}" \
 ### ---------------------------------------------------------------------- ###
 ###          DD4hep build                                                  ###
 ### ---------------------------------------------------------------------- ###
-ARG VERSION_DD4HEP=v01-31
+# spack: dd4hep @1.35 +ddg4 +ddcad +edm4hep +hepmc3 +xercesc
+ARG VERSION_DD4HEP=v01-35
 ENV DD4HEP_SRC_PATH=${APP_ROOT}/dd4hep-src \
     DD4HEP_BLD_PATH=${APP_ROOT}/dd4hep-build \
     DD4HEP_INS_PATH=${APP_ROOT}/dd4hep
@@ -300,6 +317,8 @@ RUN set -ex && \
       -DDD4HEP_USE_GEANT4=ON \
       -DDD4HEP_USE_XERCESC=ON \
       -DDD4HEP_USE_EDM4HEP=ON \
+      -DDD4HEP_USE_HEPMC3=ON \
+      -DDD4HEP_USE_DDCAD=ON \
       -DBUILD_TESTING=OFF \
       "${DD4HEP_SRC_PATH}" && \
     cmake --build . --target install -j"${BUILD_THREADS}" && \
@@ -313,9 +332,38 @@ ENV DD4HEP_DIR=${DD4HEP_INS_PATH} \
 
 
 ### ---------------------------------------------------------------------- ###
+###          ActsSVG build  (must precede ACTS since ACTS links it)        ###
+### ---------------------------------------------------------------------- ###
+# spack: actsvg @0.4.56 ~examples
+ARG VERSION_ACTSSVG=v0.4.56
+ENV ACTSSVG_SRC_PATH=${APP_ROOT}/actssvg-src \
+    ACTSSVG_BLD_PATH=${APP_ROOT}/actssvg-build \
+    ACTSSVG_INS_PATH=${APP_ROOT}/actssvg
+
+RUN set -ex && \
+    git clone --branch ${VERSION_ACTSSVG} --depth 1 https://github.com/acts-project/actsvg.git "${ACTSSVG_SRC_PATH}" && \
+    mkdir -p "${ACTSSVG_BLD_PATH}" && cd "${ACTSSVG_BLD_PATH}" && \
+    cmake \
+      -DCMAKE_INSTALL_PREFIX="${ACTSSVG_INS_PATH}" \
+      -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+      -DCMAKE_CXX_STANDARD=${CXX_STANDARD} \
+      -DACTSVG_BUILD_EXAMPLES=OFF \
+      "${ACTSSVG_SRC_PATH}" && \
+    cmake --build . --target install -j"${BUILD_THREADS}" && \
+    rm -rf "${ACTSSVG_BLD_PATH}" "${ACTSSVG_SRC_PATH}"
+
+ENV LD_LIBRARY_PATH="${ACTSSVG_INS_PATH}/lib:${LD_LIBRARY_PATH}" \
+    CMAKE_PREFIX_PATH="${ACTSSVG_INS_PATH}:${CMAKE_PREFIX_PATH}"
+
+
+### ---------------------------------------------------------------------- ###
 ###          ACTS build                                                    ###
 ### ---------------------------------------------------------------------- ###
-ARG VERSION_ACTS=v41.1.0
+# spack: acts @44.4.0 cxxstd=20
+#   +dd4hep +edm4hep +examples +fatras +geant4 +json +podio +python +svg +tgeo
+# Note: spack also has +onnx and custom patches (+pr4496 +pr4502 +pr4620)
+#       which are skipped here. ONNX requires onnxruntime built separately.
+ARG VERSION_ACTS=v44.4.0
 ENV ACTS_SRC_PATH=${APP_ROOT}/acts-src \
     ACTS_BLD_PATH=${APP_ROOT}/acts-build \
     ACTS_INS_PATH=${APP_ROOT}/acts
@@ -330,7 +378,13 @@ RUN set -ex && \
       -DACTS_BUILD_PLUGIN_TGEO=ON \
       -DACTS_BUILD_PLUGIN_DD4HEP=ON \
       -DACTS_BUILD_PLUGIN_JSON=ON \
-      -DACTS_BUILD_PLUGIN_ACTSVG=OFF \
+      -DACTS_BUILD_PLUGIN_ACTSVG=ON \
+      -DACTS_BUILD_PLUGIN_EDM4HEP=ON \
+      -DACTS_BUILD_PLUGIN_PODIO=ON \
+      -DACTS_BUILD_PLUGIN_GEANT4=ON \
+      -DACTS_BUILD_FATRAS=ON \
+      -DACTS_BUILD_EXAMPLES=ON \
+      -DACTS_BUILD_EXAMPLES_PYTHON_BINDINGS=ON \
       "${ACTS_SRC_PATH}" && \
     cmake --build . --target install -j"${BUILD_THREADS}" && \
     rm -rf "${ACTS_BLD_PATH}" "${ACTS_SRC_PATH}"
@@ -341,32 +395,10 @@ ENV ACTS_DIR=${ACTS_INS_PATH} \
 
 
 ### ---------------------------------------------------------------------- ###
-###          ActsSVG build                                                 ###
-### ---------------------------------------------------------------------- ###
-ARG VERSION_ACTSSVG=v0.4.50
-ENV ACTSSVG_SRC_PATH=${APP_ROOT}/actssvg-src \
-    ACTSSVG_BLD_PATH=${APP_ROOT}/actssvg-build \
-    ACTSSVG_INS_PATH=${APP_ROOT}/actssvg
-
-RUN set -ex && \
-    git clone --branch ${VERSION_ACTSSVG} --depth 1 https://github.com/acts-project/actsvg.git "${ACTSSVG_SRC_PATH}" && \
-    mkdir -p "${ACTSSVG_BLD_PATH}" && cd "${ACTSSVG_BLD_PATH}" && \
-    cmake \
-      -DCMAKE_INSTALL_PREFIX="${ACTSSVG_INS_PATH}" \
-      -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-      -DCMAKE_CXX_STANDARD=${CXX_STANDARD} \
-      "${ACTSSVG_SRC_PATH}" && \
-    cmake --build . --target install -j"${BUILD_THREADS}" && \
-    rm -rf "${ACTSSVG_BLD_PATH}" "${ACTSSVG_SRC_PATH}"
-
-ENV LD_LIBRARY_PATH="${ACTSSVG_INS_PATH}/lib:${LD_LIBRARY_PATH}" \
-    CMAKE_PREFIX_PATH="${ACTSSVG_INS_PATH}/lib/cmake/actsvg-0.1:${CMAKE_PREFIX_PATH}"
-
-
-### ---------------------------------------------------------------------- ###
 ###          JANA2 build                                                   ###
 ### ---------------------------------------------------------------------- ###
-ARG VERSION_JANA2=v2.4.0
+# spack: jana2 @2.4.3 +podio +root +zmq
+ARG VERSION_JANA2=v2.4.3
 ENV JANA2_SRC_PATH=${APP_ROOT}/jana2-src \
     JANA2_BLD_PATH=${APP_ROOT}/jana2-build \
     JANA2_INS_PATH=${APP_ROOT}/jana2
@@ -380,6 +412,7 @@ RUN set -ex && \
       -DCMAKE_CXX_STANDARD=${CXX_STANDARD} \
       -DUSE_PODIO=ON \
       -DUSE_ROOT=ON \
+      -DUSE_ZMQSERVER=ON \
       "${JANA2_SRC_PATH}" && \
     cmake --build . --target install -j"${BUILD_THREADS}" && \
     rm -rf "${JANA2_BLD_PATH}" "${JANA2_SRC_PATH}"
@@ -394,7 +427,8 @@ ENV JANA_HOME=${JANA2_INS_PATH} \
 ### ---------------------------------------------------------------------- ###
 ###          IRT build                                                     ###
 ### ---------------------------------------------------------------------- ###
-ARG VERSION_IRT=v1.0.8
+# spack: irt @1.0.10
+ARG VERSION_IRT=v1.0.10
 ENV IRT_SRC_PATH=${APP_ROOT}/irt-src \
     IRT_BLD_PATH=${APP_ROOT}/irt-build \
     IRT_INS_PATH=${APP_ROOT}/irt
@@ -417,6 +451,7 @@ ENV LD_LIBRARY_PATH="${IRT_INS_PATH}/lib:${LD_LIBRARY_PATH}" \
 ### ---------------------------------------------------------------------- ###
 ###          NPDet build                                                   ###
 ### ---------------------------------------------------------------------- ###
+# Not in spack EIC env; kept for compatibility with full-stack
 ARG VERSION_NPDET=v1.4.1
 ENV NPDET_SRC_PATH=${APP_ROOT}/npdet-src \
     NPDET_BLD_PATH=${APP_ROOT}/npdet-build \
@@ -441,7 +476,8 @@ ENV PATH="${NPDET_INS_PATH}/bin:${PATH}" \
 ### ---------------------------------------------------------------------- ###
 ###          Algorithms build                                              ###
 ### ---------------------------------------------------------------------- ###
-ARG VERSION_ALGORITHMS=v1.0.0
+# spack: algorithms @1.2.0
+ARG VERSION_ALGORITHMS=v1.2.0
 ENV ALGORITHMS_SRC_PATH=${APP_ROOT}/algorithms-src \
     ALGORITHMS_BLD_PATH=${APP_ROOT}/algorithms-build \
     ALGORITHMS_INS_PATH=${APP_ROOT}/algorithms
@@ -464,6 +500,7 @@ ENV LD_LIBRARY_PATH="${ALGORITHMS_INS_PATH}/lib:${LD_LIBRARY_PATH}" \
 ### ---------------------------------------------------------------------- ###
 ###          JANA4ML4FPGA build                                            ###
 ### ---------------------------------------------------------------------- ###
+# Not in spack EIC env; kept for compatibility with full-stack
 ARG VERSION_JANA4ML4FPGA=main
 ENV JANA4ML4FPGA_SRC_PATH=${APP_ROOT}/jana4ml4fpga-src \
     JANA4ML4FPGA_BLD_PATH=${APP_ROOT}/jana4ml4fpga-build \

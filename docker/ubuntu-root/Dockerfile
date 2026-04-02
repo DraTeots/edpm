@@ -72,7 +72,7 @@ ARG CXX_STANDARD=20
 ### ---------------------------------------------------------------------- ###
 ###          ROOT build (no EDPM)                                          ###
 ### ---------------------------------------------------------------------- ###
-ARG CERN_ROOT_VERSION=v6-36-00
+ARG CERN_ROOT_VERSION=v6-38-00
 ENV CERN_ROOT_SRC_PATH=${APP_ROOT}/root-src \
     CERN_ROOT_BLD_PATH=${APP_ROOT}/root-build \
     CERN_ROOT_INS_PATH=${APP_ROOT}/root
@@ -95,6 +95,11 @@ RUN set -ex && \
       -Dpythia6_nolink=OFF \
       -Dpythia8=OFF \
       -Dhttp=ON \
+      -Dfftw3=ON \
+      -Dfortran=ON \
+      -Dssl=ON \
+      -Dmlp=ON \
+      -Dtmva=ON \
       -Wno-dev \
       "${CERN_ROOT_SRC_PATH}" && \
     \

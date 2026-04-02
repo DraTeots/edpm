@@ -54,7 +54,8 @@ ENV DETECTOR_PATH="${EPIC_INS_PATH}/share/epic" \
 ### ---------------------------------------------------------------------- ###
 ###          EICrecon build (EIC Reconstruction Framework)                  ###
 ### ---------------------------------------------------------------------- ###
-ARG VERSION_EICRECON=main
+# spack: eicrecon @1.35.2
+ARG VERSION_EICRECON=v1.35.2
 ENV EICRECON_SRC_PATH=${APP_ROOT}/eicrecon-src \
     EICRECON_BLD_PATH=${APP_ROOT}/eicrecon-build \
     EICRECON_INS_PATH=${APP_ROOT}/eicrecon
