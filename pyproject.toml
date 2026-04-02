@@ -32,6 +32,9 @@ dev = [
     "twine",
     "keyrings.alt"
 ]
+test = [
+    "pytest"
+]
 
 [build-system]
 requires = ["setuptools>=66.0", "wheel"]
