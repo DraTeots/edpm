@@ -3,6 +3,101 @@
 Rattler-build recipes for EIC experiment software packages. These produce conda
 packages hosted on ghcr.io and consumed via pixi.
 
+## Prerequisites: Installing the toolchain (Linux)
+
+All tools here are fully open source. No Anaconda license required.
+
+### Option A — pixi (recommended for end users)
+
+pixi is a single binary that manages conda environments. It is the recommended
+way to install and use the EIC software stack.
+
+```bash
+# Install pixi
+curl -fsSL https://pixi.sh/install.sh | bash
+
+# Restart shell or source the profile
+source ~/.bash_profile   # or ~/.bashrc / ~/.zshrc
+
+# Verify
+pixi --version
+```
+
+### Option B — Miniforge (if you want a traditional conda setup)
+
+Miniforge is the community-maintained, fully open source conda distribution.
+It ships with `conda` and `mamba` preconfigured to use conda-forge only —
+no Anaconda default channel, no Anaconda license concerns.
+
+```bash
+# Download the installer
+curl -L -O "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh"
+
+# Run installer (interactive — accept defaults or use -b for batch/unattended)
+bash Miniforge3-Linux-x86_64.sh
+
+# Or unattended install to ~/miniforge3
+bash Miniforge3-Linux-x86_64.sh -b -p "${HOME}/miniforge3"
+
+# Activate for current session
+source "${HOME}/miniforge3/etc/profile.d/conda.sh"
+
+# Initialize shell (adds conda to ~/.bashrc)
+conda init bash       # or: conda init zsh
+
+# Restart shell, then verify
+conda --version
+mamba --version
+```
+
+Miniforge includes `mamba`, a faster drop-in replacement for `conda`:
+```bash
+# Use mamba instead of conda for faster solves
+mamba install <package>
+mamba create -n myenv python=3.13
+```
+
+### Option C — Micromamba (minimal, no base environment)
+
+Micromamba is a standalone C++ reimplementation — no Python required, no base
+environment, single binary. Good for containers and CI.
+
+```bash
+# Install to ~/.local/bin
+"${SHELL}" <(curl -L micro.mamba.pm/install.sh)
+
+# Or manual install
+mkdir -p ~/.local/bin
+curl -Ls https://micro.mamba.pm/api/micromamba/linux-64/latest | tar -xvj -C ~/.local/bin/ bin/micromamba
+echo 'eval "$(~/.local/bin/micromamba shell hook -s bash)"' >> ~/.bashrc
+source ~/.bashrc
+
+# Verify
+micromamba --version
+
+# Usage mirrors conda/mamba
+micromamba create -n eic -c conda-forge python=3.13
+micromamba activate eic
+```
+
+### rattler-build (for recipe maintainers only)
+
+Only needed if you are building packages. End users installing via pixi do
+**not** need rattler-build.
+
+```bash
+# Install via pixi global (simplest)
+pixi global install rattler-build
+
+# Or download binary directly
+curl -SsL "https://github.com/prefix-dev/rattler-build/releases/latest/download/rattler-build-x86_64-unknown-linux-musl" \
+  -o ~/.local/bin/rattler-build
+chmod +x ~/.local/bin/rattler-build
+
+# Verify
+rattler-build --version
+```
+
 ## Packages built here
 
 | Package       | Version | Source                                    |
