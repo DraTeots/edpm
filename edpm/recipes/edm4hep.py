@@ -19,7 +19,7 @@ class Edm4HepRecipe(ComposedRecipe):
             'fetch': 'git',
             'make': 'cmake',
             'url': 'https://github.com/key4hep/EDM4hep.git',
-            'branch': 'v00-99-01'
+            'branch': 'v00-99-02'
         }
         super().__init__(name='edm4hep', config=config)
 
@@ -27,9 +27,6 @@ class Edm4HepRecipe(ComposedRecipe):
     def gen_env(data):
         path = data['install_path']
 
-        if platform.system() == 'Darwin':
-            yield EnvAppend('DYLD_LIBRARY_PATH', os.path.join(path, 'lib'))
-
+        # This is important for ROOT to find dictionaries
         yield EnvAppend('LD_LIBRARY_PATH', os.path.join(path, 'lib'))
         yield CmakePrefixPath(os.path.join(path, 'lib', 'cmake', 'EDM4HEP'))
-        yield EnvSet('EDM4HEP_ROOT', path)

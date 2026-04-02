@@ -1,0 +1,73 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/prefix-dev/recipe-format/main/schema.json
+schema_version: 1
+
+context:
+  version: "1.35"
+  tag: "v01-35"
+
+package:
+  name: eic-dd4hep
+  version: ${{ version }}
+
+source:
+  git: https://github.com/AIDASoft/DD4hep.git
+  tag: ${{ tag }}
+  depth: 1
+
+build:
+  number: 0
+  script:
+    - if: unix
+      then:
+        - mkdir build && cd build
+        - cmake ${SRC_DIR}
+            -GNinja
+            -DCMAKE_INSTALL_PREFIX=${PREFIX}
+            -DCMAKE_BUILD_TYPE=Release
+            -DCMAKE_CXX_STANDARD=20
+            -DDD4HEP_USE_GEANT4=ON
+            -DDD4HEP_USE_XERCESC=ON
+            -DDD4HEP_USE_HEPMC3=ON
+            -DDD4HEP_USE_EDM4HEP=ON
+            -DDD4HEP_USE_DDCAD=ON
+            -DDD4HEP_BUILD_DDG4=ON
+            -DBUILD_TESTING=OFF
+        - ninja -j${CPU_COUNT}
+        - ninja install
+        # Install activation scripts
+        - mkdir -p ${PREFIX}/etc/conda/activate.d
+        - mkdir -p ${PREFIX}/etc/conda/deactivate.d
+        - cp ${RECIPE_DIR}/activate.sh ${PREFIX}/etc/conda/activate.d/dd4hep-activate.sh
+        - cp ${RECIPE_DIR}/deactivate.sh ${PREFIX}/etc/conda/deactivate.d/dd4hep-deactivate.sh
+
+requirements:
+  build:
+    - ${{ compiler('c') }}
+    - ${{ compiler('cxx') }}
+    - cmake >=3.22
+    - ninja
+  host:
+    - root_base >=6.38
+    - geant4 >=11.3
+    - clhep 2.4.7.1
+    - hepmc3 >=3.3.0
+    - eic-podio >=1.6
+    - eic-edm4hep >=0.99.4
+    - xerces-c
+    - boost-cpp >=1.86
+    - python
+  run:
+    - root_base >=6.38
+    - geant4 >=11.3
+    - clhep 2.4.7.1
+    - hepmc3 >=3.3.0
+    - eic-podio >=1.6
+    - eic-edm4hep >=0.99.4
+    - xerces-c
+    - python
+
+about:
+  homepage: https://github.com/AIDASoft/DD4hep
+  license: LGPL-3.0-or-later
+  summary: Detector Description Toolkit for High Energy Physics
+  repository: https://github.com/AIDASoft/DD4hep

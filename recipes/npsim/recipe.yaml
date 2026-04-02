@@ -1,0 +1,55 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/prefix-dev/recipe-format/main/schema.json
+schema_version: 1
+
+context:
+  version: "1.4.6"
+  tag: "v1.4.6"
+
+package:
+  name: eic-npsim
+  version: ${{ version }}
+
+source:
+  git: https://github.com/eic/npsim.git
+  tag: ${{ tag }}
+  depth: 1
+
+build:
+  number: 0
+  script:
+    - if: unix
+      then:
+        - mkdir build && cd build
+        - cmake ${SRC_DIR}
+            -GNinja
+            -DCMAKE_INSTALL_PREFIX=${PREFIX}
+            -DCMAKE_BUILD_TYPE=Release
+            -DCMAKE_CXX_STANDARD=20
+            -DBUILD_TESTING=OFF
+        - ninja -j${CPU_COUNT}
+        - ninja install
+
+requirements:
+  build:
+    - ${{ compiler('c') }}
+    - ${{ compiler('cxx') }}
+    - cmake >=3.22
+    - ninja
+  host:
+    - root_base >=6.38
+    - geant4 >=11.3
+    - eic-dd4hep >=1.35
+    - hepmc3 >=3.3.0
+    - python
+  run:
+    - root_base >=6.38
+    - geant4 >=11.3
+    - eic-dd4hep >=1.35
+    - hepmc3 >=3.3.0
+    - python
+
+about:
+  homepage: https://github.com/eic/npsim
+  license: LGPL-3.0-or-later
+  summary: DD4hep-based detector simulation for nuclear physics
+  repository: https://github.com/eic/npsim

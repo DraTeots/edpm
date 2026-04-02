@@ -18,7 +18,7 @@ class HepMC3Recipe(ComposedRecipe):
             'fetch': 'git',
             'make': 'cmake',
             'url': 'https://gitlab.cern.ch/hepmc/HepMC3.git',
-            'branch': 'v3.3.0'
+            'branch': '3.3.1'
         }
         super().__init__(name='hepmc3', config=config)
 

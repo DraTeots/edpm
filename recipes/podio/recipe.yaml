@@ -1,0 +1,52 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/prefix-dev/recipe-format/main/schema.json
+schema_version: 1
+
+context:
+  version: "1.6"
+  tag: "v01-06"
+
+package:
+  name: eic-podio
+  version: ${{ version }}
+
+source:
+  git: https://github.com/AIDASoft/podio.git
+  tag: ${{ tag }}
+  depth: 1
+
+build:
+  number: 0
+  script:
+    - if: unix
+      then:
+        - mkdir build && cd build
+        - cmake ${SRC_DIR}
+            -GNinja
+            -DCMAKE_INSTALL_PREFIX=${PREFIX}
+            -DCMAKE_BUILD_TYPE=Release
+            -DCMAKE_CXX_STANDARD=20
+            -DENABLE_DATASOURCE=ON
+            -DENABLE_RNTUPLE=ON
+            -DBUILD_TESTING=OFF
+        - ninja -j${CPU_COUNT}
+        - ninja install
+
+requirements:
+  build:
+    - ${{ compiler('c') }}
+    - ${{ compiler('cxx') }}
+    - cmake >=3.22
+    - ninja
+  host:
+    - root_base >=6.38
+    - python
+    - catch2 >=3.4
+  run:
+    - root_base >=6.38
+    - python
+
+about:
+  homepage: https://github.com/AIDASoft/podio
+  license: Apache-2.0
+  summary: PODIO - Plain Old Data I/O for HEP event data models
+  repository: https://github.com/AIDASoft/podio

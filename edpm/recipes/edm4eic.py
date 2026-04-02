@@ -18,7 +18,7 @@ class Edm4EicRecipe(ComposedRecipe):
             'fetch': 'git',
             'make': 'cmake',
             'url': 'https://github.com/eic/edm4eic.git',
-            'branch': 'v8.0.0'
+            'branch': 'v8.2.0'
         }
         super().__init__(name='edm4eic', config=config)
 
@@ -26,17 +26,8 @@ class Edm4EicRecipe(ComposedRecipe):
     def gen_env(data):
         path = data['install_path']
 
-        yield EnvSet('EICD_ROOT', path)
-
-        if platform.system() == 'Darwin':
-            # Some projects might install in lib or lib64
-            if os.path.isdir(os.path.join(path, 'lib64')):
-                yield EnvAppend('DYLD_LIBRARY_PATH', os.path.join(path, 'lib64'))
-            yield EnvAppend('DYLD_LIBRARY_PATH', os.path.join(path, 'lib'))
-
-        # On Linux, we add both lib and lib64 if they exist
-        if os.path.isdir(os.path.join(path, 'lib64')):
-            yield EnvAppend('LD_LIBRARY_PATH', os.path.join(path, 'lib64'))
+        # This is important for ROOT to find dictionaries
         yield EnvAppend('LD_LIBRARY_PATH', os.path.join(path, 'lib'))
-
         yield CmakePrefixPath(os.path.join(path, 'lib', 'EDM4EIC'))
+
+

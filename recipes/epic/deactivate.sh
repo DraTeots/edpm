@@ -1,0 +1,5 @@
+#!/bin/bash
+unset DETECTOR_PATH
+unset BEAMLINE
+unset BEAMLINE_PATH
+unset BEAMLINE_CONFIG

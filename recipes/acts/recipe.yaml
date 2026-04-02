@@ -1,0 +1,72 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/prefix-dev/recipe-format/main/schema.json
+schema_version: 1
+
+context:
+  version: "44.4.0"
+  tag: "v44.4.0"
+
+package:
+  name: eic-acts
+  version: ${{ version }}
+
+source:
+  git: https://github.com/acts-project/acts.git
+  tag: ${{ tag }}
+  depth: 1
+
+build:
+  number: 0
+  script:
+    - if: unix
+      then:
+        - mkdir build && cd build
+        - cmake ${SRC_DIR}
+            -GNinja
+            -DCMAKE_INSTALL_PREFIX=${PREFIX}
+            -DCMAKE_BUILD_TYPE=Release
+            -DCMAKE_CXX_STANDARD=20
+            -DACTS_BUILD_PLUGIN_TGEO=ON
+            -DACTS_BUILD_PLUGIN_DD4HEP=ON
+            -DACTS_BUILD_PLUGIN_EDM4HEP=ON
+            -DACTS_BUILD_PLUGIN_PODIO=ON
+            -DACTS_BUILD_PLUGIN_JSON=ON
+            -DACTS_BUILD_PLUGIN_ACTSVG=ON
+            -DACTS_BUILD_PLUGIN_GEANT4=ON
+            -DACTS_BUILD_FATRAS=ON
+            -DACTS_BUILD_EXAMPLES=OFF
+            -DACTS_BUILD_UNITTESTS=OFF
+        - ninja -j${CPU_COUNT}
+        - ninja install
+
+requirements:
+  build:
+    - ${{ compiler('c') }}
+    - ${{ compiler('cxx') }}
+    - cmake >=3.22
+    - ninja
+  host:
+    - root_base >=6.38
+    - geant4 >=11.3
+    - eic-dd4hep >=1.35
+    - eic-podio >=1.6
+    - eic-edm4hep >=0.99.4
+    - eigen >=3.4
+    - nlohmann_json >=3.11
+    - boost-cpp >=1.86
+    - tbb
+    - python
+  run:
+    - root_base >=6.38
+    - geant4 >=11.3
+    - eic-dd4hep >=1.35
+    - eic-podio >=1.6
+    - eic-edm4hep >=0.99.4
+    - eigen >=3.4
+    - nlohmann_json >=3.11
+    - tbb
+
+about:
+  homepage: https://github.com/acts-project/acts
+  license: MPL-2.0
+  summary: A Common Tracking Software for particle physics experiments
+  repository: https://github.com/acts-project/acts

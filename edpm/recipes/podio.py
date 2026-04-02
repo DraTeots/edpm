@@ -26,17 +26,9 @@ class PodioRecipe(ComposedRecipe):
     def gen_env(data):
         path = data['install_path']
 
-        yield EnvSet('PODIO_ROOT', path)
-
-        # macOS case
-        if platform.system() == 'Darwin':
-            if os.path.isdir(os.path.join(path, 'lib64')):
-                yield EnvAppend('DYLD_LIBRARY_PATH', os.path.join(path, 'lib64'))
-            yield EnvAppend('DYLD_LIBRARY_PATH', os.path.join(path, 'lib'))
-
-        # Linux
-        if os.path.isdir(os.path.join(path, 'lib64')):
-            yield EnvAppend('LD_LIBRARY_PATH', os.path.join(path, 'lib64'))
-        yield EnvAppend('LD_LIBRARY_PATH', os.path.join(path, 'lib'))
-
         yield CmakePrefixPath(os.path.join(path, 'lib', 'cmake', 'podio'))
+
+        # This is important for ROOT to find dictionaries
+        if platform.system() == 'Darwin':
+            yield EnvAppend('DYLD_LIBRARY_PATH', os.path.join(path, 'lib'))
+        yield EnvAppend('LD_LIBRARY_PATH', os.path.join(path, 'lib'))

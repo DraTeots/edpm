@@ -63,7 +63,7 @@ class RootRecipe(ComposedRecipe):
             'fetch': 'git',
             'make': 'cmake',
             'url': 'https://github.com/root-project/root.git',  # main GitHub
-            'branch': 'v6-34-04',
+            'branch': 'v6-36-00',
             'shallow': True,  # means use `--depth 1`
             'cxx_standard': '17',
             'cmake_build_type': 'RelWithDebInfo',

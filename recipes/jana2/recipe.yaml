@@ -1,0 +1,61 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/prefix-dev/recipe-format/main/schema.json
+schema_version: 1
+
+context:
+  version: "2.4.3"
+  tag: "v2.4.3"
+
+package:
+  name: eic-jana2
+  version: ${{ version }}
+
+source:
+  git: https://github.com/JeffersonLab/JANA2.git
+  tag: ${{ tag }}
+  depth: 1
+
+build:
+  number: 0
+  script:
+    - if: unix
+      then:
+        - mkdir build && cd build
+        - cmake ${SRC_DIR}
+            -GNinja
+            -DCMAKE_INSTALL_PREFIX=${PREFIX}
+            -DCMAKE_BUILD_TYPE=Release
+            -DCMAKE_CXX_STANDARD=20
+            -DUSE_PODIO=ON
+            -DUSE_ROOT=ON
+            -DUSE_ZMQTRANSPORT=ON
+            -DBUILD_TESTING=OFF
+        - ninja -j${CPU_COUNT}
+        - ninja install
+        # Install activation scripts
+        - mkdir -p ${PREFIX}/etc/conda/activate.d
+        - mkdir -p ${PREFIX}/etc/conda/deactivate.d
+        - cp ${RECIPE_DIR}/activate.sh ${PREFIX}/etc/conda/activate.d/jana2-activate.sh
+        - cp ${RECIPE_DIR}/deactivate.sh ${PREFIX}/etc/conda/deactivate.d/jana2-deactivate.sh
+
+requirements:
+  build:
+    - ${{ compiler('c') }}
+    - ${{ compiler('cxx') }}
+    - cmake >=3.22
+    - ninja
+  host:
+    - root_base >=6.38
+    - eic-podio >=1.6
+    - zeromq
+    - python
+  run:
+    - root_base >=6.38
+    - eic-podio >=1.6
+    - zeromq
+    - python
+
+about:
+  homepage: https://github.com/JeffersonLab/JANA2
+  license: BSD-3-Clause
+  summary: Multi-threaded event reconstruction framework for nuclear and particle physics
+  repository: https://github.com/JeffersonLab/JANA2

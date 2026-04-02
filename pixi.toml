@@ -1,0 +1,46 @@
+# Example pixi.toml for consuming the EIC conda channel.
+#
+# Usage:
+#   pixi install        # install all dependencies (binary, no source builds)
+#   pixi shell          # activate environment with all env vars
+#   pixi run eicrecon   # run eicrecon directly
+#
+# This file is an example for end users. Copy it to your analysis project
+# and adjust versions/dependencies as needed.
+
+[project]
+name = "eic-environment"
+version = "0.1.0"
+description = "EIC experiment software environment"
+channels = ["oci://ghcr.io/eic/eic-conda", "conda-forge"]
+platforms = ["linux-64"]
+
+[dependencies]
+# System / base
+python = ">=3.13"
+
+# From conda-forge
+root_base = ">=6.38"
+geant4 = ">=11.3"
+eigen = ">=3.4"
+hepmc3 = ">=3.3"
+fmt = ">=11.2"
+boost-cpp = ">=1.86"
+nlohmann_json = ">=3.11"
+
+# EIC packages (from oci://ghcr.io/eic/eic-conda)
+eic-podio = ">=1.6"
+eic-edm4hep = ">=0.99.4"
+eic-dd4hep = ">=1.35"
+eic-edm4eic = ">=8.8.0"
+eic-acts = ">=44.4.0"
+eic-jana2 = ">=2.4.3"
+eic-irt = ">=1.0.10"
+eic-algorithms = ">=1.2.0"
+eic-epic = ">=25.02.0"
+eic-npsim = ">=1.4.6"
+eic-eicrecon = ">=1.35.2"
+
+[tasks]
+eicrecon = "eicrecon"
+npsim = "npsim"

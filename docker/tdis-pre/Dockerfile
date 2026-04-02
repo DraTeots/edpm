@@ -59,6 +59,7 @@ RUN edpm add hepmc3 && \
     edpm install hepmc3 && \
     edpm clean hepmc3
 
+
 RUN edpm add acts && \
     edpm config acts branch=${VERSION_ACTS} && \
     edpm config acts cmake_flags=" \
@@ -72,6 +73,11 @@ RUN edpm add acts && \
     edpm install acts &&\
     edpm clean acts
 
+# ----- ENV for acts -----
+ENV ACTS_DIR=/app/acts/acts-install \
+    LD_LIBRARY_PATH=/app/acts/acts-install/lib:${LD_LIBRARY_PATH} \
+    CMAKE_PREFIX_PATH=/app/acts/acts-install/lib/cmake/Acts:/app/acts/acts-install/lib/cmake/nlohmann_json:/app/acts/acts-install/lib/cmake/ActsDD4hep:${CMAKE_PREFIX_PATH}
+
 
 # -------------------
 # JANA2
@@ -81,14 +87,52 @@ RUN edpm add jana2 && \
    edpm config jana2 branch=${VERSION_JANA2} && \
    edpm config jana2 cmake_flags="-DUSE_PODIO=On -DUSE_ROOT=On -DCMAKE_BUILD_TYPE=Debug" && \
    edpm install jana2
-#
-## Print a bit of info
-#RUN ls && pwd
-#
-## (Optional) jupyterlab or other python packages
-## RUN python3 -m pip install --user jupyterlab
-#
-#USER root
+
+###############################################################################
+# ----- ENV for acts -----
+ENV ACTS_DIR=/app/acts/acts-install \
+    LD_LIBRARY_PATH=/app/acts/acts-install/lib:${LD_LIBRARY_PATH} \
+    CMAKE_PREFIX_PATH=/app/acts/acts-install/lib/cmake/Acts:/app/acts/acts-install/lib/cmake/nlohmann_json:/app/acts/acts-install/lib/cmake/ActsDD4hep:${CMAKE_PREFIX_PATH}
+
+###############################################################################
+# ----- ENV for catch2 -----
+ENV LD_LIBRARY_PATH=/app/catch2/catch2-install/lib:${LD_LIBRARY_PATH} \
+    CMAKE_PREFIX_PATH=/app/catch2/catch2-install/lib/cmake/Catch2:${CMAKE_PREFIX_PATH}
+
+###############################################################################
+# ----- ENV for eigen3 -----
+ENV CMAKE_PREFIX_PATH=/app/eigen3/eigen3-install/share/eigen3/cmake:${CMAKE_PREFIX_PATH}
+
+###############################################################################
+# ----- ENV for fmt -----
+ENV LD_LIBRARY_PATH=/app/fmt/fmt-install/lib:${LD_LIBRARY_PATH} \
+    CMAKE_PREFIX_PATH=/app/fmt/fmt-install/lib/cmake/fmt:${CMAKE_PREFIX_PATH}
+
+###############################################################################
+# ----- ENV for hepmc3 -----
+ENV PATH=/app/hepmc3/hepmc3-install/bin:${PATH} \
+    HEPMC3_DIR=/app/hepmc3/hepmc3-install \
+    CMAKE_PREFIX_PATH=/app/hepmc3/hepmc3-install/share/HepMC3/cmake:${CMAKE_PREFIX_PATH} \
+    LD_LIBRARY_PATH=/app/hepmc3/hepmc3-install/lib:${LD_LIBRARY_PATH}
+
+###############################################################################
+# ----- ENV for jana2 -----
+ENV JANA_HOME=/app/jana2/jana2-install \
+    JANA_PLUGIN_PATH=/app/jana2/jana2-install/plugins \
+    PATH=/app/jana2/jana2-install/bin:${PATH} \
+    LD_LIBRARY_PATH=/app/jana2/jana2-install/lib:${LD_LIBRARY_PATH} \
+    CMAKE_PREFIX_PATH=/app/jana2/jana2-install/lib/cmake/JANA:${CMAKE_PREFIX_PATH}
+
+###############################################################################
+# ----- ENV for podio -----
+ENV PODIO_ROOT=/app/podio/podio-install \
+    LD_LIBRARY_PATH=/app/podio/podio-install/lib:${LD_LIBRARY_PATH} \
+    CMAKE_PREFIX_PATH=/app/podio/podio-install/lib/cmake/podio:${CMAKE_PREFIX_PATH}
+
+###############################################################################
+# ----- ENV for root -----
+ENV CMAKE_PREFIX_PATH=/app/root/root-install/cmake:${CMAKE_PREFIX_PATH}
+
 #
 SHELL ["/bin/bash", "-c"]
 
@@ -97,7 +141,7 @@ RUN echo '#!/bin/bash' > /entrypoint.sh && \
     echo 'set -e' >> /entrypoint.sh && \
     echo '' >> /entrypoint.sh && \
     echo '# Source the EDPM environment script (env.sh)' >> /entrypoint.sh && \
-    echo 'source /home/tdisuser/env.sh || true' >> /entrypoint.sh && \
+    echo 'source /app/env.sh || true' >> /entrypoint.sh && \
     echo '' >> /entrypoint.sh && \
     echo 'exec "$@"' >> /entrypoint.sh
 RUN chmod +x /entrypoint.sh

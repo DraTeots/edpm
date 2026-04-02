@@ -32,16 +32,13 @@ ENV APP_ROOT=/app
 ## Ref: https://docs.docker.com/engine/reference/builder/#example-running-a-multi-line-script
 SHELL ["bash", "-ex", "-c"]
 
-ENV CLICOLOR_FORCE=1      \
-    LANGUAGE=en_US.UTF-8  \
-    LANG=en_US.UTF-8      \
-    LC_ALL=en_US.UTF-8
+
 
 # Install OS dependencies
 RUN apt-get update &&\
     apt-get install -y python3-dev python3-pip python3-jinja2 python3-yaml python3-numpy  dos2unix \
                        sudo git cmake gdb ninja-build apt-utils bash ccache clang valgrind gfortran g++ gcc curl clang-tools-18 clang-tidy-18 \
-                       dialog apt-utils dpkg-dev tzdata binutils unminimize libfmt-dev\
+                       dialog apt-utils dpkg-dev tzdata binutils unminimize libfmt-dev locales\
                        libftgl-dev libxml2-dev libldap2-dev  \
                        libfftw3-dev libmysqlclient-dev libavahi-compat-libdnssd-dev  \
                        libcfitsio-dev libglu1-mesa-dev libkrb5-dev libpcre3-dev libglew-dev  \
@@ -51,6 +48,15 @@ RUN apt-get update &&\
                        libx11-dev libxft-dev libxpm-dev libxext-dev &&\
     apt-get clean && apt-get autoremove -y && rm -rf /var/lib/apt/lists/*
 
+
+RUN sed -i -e 's/# en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen && \
+    dpkg-reconfigure --frontend=noninteractive locales
+
+
+ENV CLICOLOR_FORCE=1      \
+    LANGUAGE=en_US.UTF-8  \
+    LANG=en_US.UTF-8      \
+    LC_ALL=en_US.UTF-8
 
 # Install EDPM v3 and set the top_dir
 RUN python3 -m pip install --user --upgrade --force-reinstall --break-system-packages ruamel.yaml click appdirs edpm

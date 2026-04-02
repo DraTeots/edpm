@@ -1,0 +1,53 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/prefix-dev/recipe-format/main/schema.json
+schema_version: 1
+
+context:
+  version: "8.8.0"
+  tag: "v8.8.0"
+
+package:
+  name: eic-edm4eic
+  version: ${{ version }}
+
+source:
+  git: https://github.com/eic/edm4eic.git
+  tag: ${{ tag }}
+  depth: 1
+
+build:
+  number: 0
+  script:
+    - if: unix
+      then:
+        - mkdir build && cd build
+        - cmake ${SRC_DIR}
+            -GNinja
+            -DCMAKE_INSTALL_PREFIX=${PREFIX}
+            -DCMAKE_BUILD_TYPE=Release
+            -DCMAKE_CXX_STANDARD=20
+            -DBUILD_TESTING=OFF
+        - ninja -j${CPU_COUNT}
+        - ninja install
+
+requirements:
+  build:
+    - ${{ compiler('c') }}
+    - ${{ compiler('cxx') }}
+    - cmake >=3.22
+    - ninja
+  host:
+    - root_base >=6.38
+    - eic-podio >=1.6
+    - eic-edm4hep >=0.99.4
+    - python
+  run:
+    - root_base >=6.38
+    - eic-podio >=1.6
+    - eic-edm4hep >=0.99.4
+    - python
+
+about:
+  homepage: https://github.com/eic/edm4eic
+  license: LGPL-3.0-or-later
+  summary: EIC event data model based on EDM4hep and PODIO
+  repository: https://github.com/eic/edm4eic
