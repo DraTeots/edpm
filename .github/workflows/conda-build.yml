@@ -12,7 +12,6 @@ on:
         default: false
 
 env:
-  RATTLER_BUILD_VERSION: "0.35"
   CHANNEL_URL: "oci://ghcr.io/eic/eic-conda"
 
 jobs:
@@ -21,16 +20,15 @@ jobs:
   # ============================================================
   build-podio:
     runs-on: ubuntu-latest
-    container: condaforge/linux-anvil-cos7-x86_64
     steps:
       - uses: actions/checkout@v4
       - name: Install rattler-build
         run: |
-          curl -SsL "https://github.com/prefix-dev/rattler-build/releases/latest/download/rattler-build-x86_64-unknown-linux-musl" -o rattler-build
-          chmod +x rattler-build
+          curl -SsL "https://github.com/prefix-dev/rattler-build/releases/latest/download/rattler-build-x86_64-unknown-linux-musl" -o /usr/local/bin/rattler-build
+          chmod +x /usr/local/bin/rattler-build
       - name: Build podio
         run: |
-          ./rattler-build build \
+          rattler-build build \
             --recipe recipes/podio/ \
             --channel conda-forge \
             --output-dir output/
@@ -41,16 +39,15 @@ jobs:
 
   build-jana2:
     runs-on: ubuntu-latest
-    container: condaforge/linux-anvil-cos7-x86_64
     steps:
       - uses: actions/checkout@v4
       - name: Install rattler-build
         run: |
-          curl -SsL "https://github.com/prefix-dev/rattler-build/releases/latest/download/rattler-build-x86_64-unknown-linux-musl" -o rattler-build
-          chmod +x rattler-build
+          curl -SsL "https://github.com/prefix-dev/rattler-build/releases/latest/download/rattler-build-x86_64-unknown-linux-musl" -o /usr/local/bin/rattler-build
+          chmod +x /usr/local/bin/rattler-build
       - name: Build jana2
         run: |
-          ./rattler-build build \
+          rattler-build build \
             --recipe recipes/jana2/ \
             --channel conda-forge \
             --output-dir output/
@@ -60,14 +57,11 @@ jobs:
           path: output/**/*.conda
 
   # ============================================================
-  # Layer 0b: dd4hep needs podio+edm4hep but also depends on
-  # conda-forge geant4/root. We build it after edm4hep.
-  # First: edm4hep needs podio.
+  # Layer 0b: edm4hep needs podio, dd4hep needs both
   # ============================================================
   build-edm4hep:
     needs: [build-podio]
     runs-on: ubuntu-latest
-    container: condaforge/linux-anvil-cos7-x86_64
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
@@ -76,11 +70,11 @@ jobs:
           path: local-channel/
       - name: Install rattler-build
         run: |
-          curl -SsL "https://github.com/prefix-dev/rattler-build/releases/latest/download/rattler-build-x86_64-unknown-linux-musl" -o rattler-build
-          chmod +x rattler-build
+          curl -SsL "https://github.com/prefix-dev/rattler-build/releases/latest/download/rattler-build-x86_64-unknown-linux-musl" -o /usr/local/bin/rattler-build
+          chmod +x /usr/local/bin/rattler-build
       - name: Build edm4hep
         run: |
-          ./rattler-build build \
+          rattler-build build \
             --recipe recipes/edm4hep/ \
             --channel local-channel/ \
             --channel conda-forge \
@@ -93,7 +87,6 @@ jobs:
   build-dd4hep:
     needs: [build-podio, build-edm4hep]
     runs-on: ubuntu-latest
-    container: condaforge/linux-anvil-cos7-x86_64
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
@@ -103,11 +96,11 @@ jobs:
           merge-multiple: true
       - name: Install rattler-build
         run: |
-          curl -SsL "https://github.com/prefix-dev/rattler-build/releases/latest/download/rattler-build-x86_64-unknown-linux-musl" -o rattler-build
-          chmod +x rattler-build
+          curl -SsL "https://github.com/prefix-dev/rattler-build/releases/latest/download/rattler-build-x86_64-unknown-linux-musl" -o /usr/local/bin/rattler-build
+          chmod +x /usr/local/bin/rattler-build
       - name: Build dd4hep
         run: |
-          ./rattler-build build \
+          rattler-build build \
             --recipe recipes/dd4hep/ \
             --channel local-channel/ \
             --channel conda-forge \
@@ -123,7 +116,6 @@ jobs:
   build-edm4eic:
     needs: [build-podio, build-edm4hep]
     runs-on: ubuntu-latest
-    container: condaforge/linux-anvil-cos7-x86_64
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
@@ -133,11 +125,11 @@ jobs:
           merge-multiple: true
       - name: Install rattler-build
         run: |
-          curl -SsL "https://github.com/prefix-dev/rattler-build/releases/latest/download/rattler-build-x86_64-unknown-linux-musl" -o rattler-build
-          chmod +x rattler-build
+          curl -SsL "https://github.com/prefix-dev/rattler-build/releases/latest/download/rattler-build-x86_64-unknown-linux-musl" -o /usr/local/bin/rattler-build
+          chmod +x /usr/local/bin/rattler-build
       - name: Build edm4eic
         run: |
-          ./rattler-build build \
+          rattler-build build \
             --recipe recipes/edm4eic/ \
             --channel local-channel/ \
             --channel conda-forge \
@@ -150,7 +142,6 @@ jobs:
   build-acts:
     needs: [build-dd4hep, build-podio, build-edm4hep]
     runs-on: ubuntu-latest
-    container: condaforge/linux-anvil-cos7-x86_64
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
@@ -160,11 +151,11 @@ jobs:
           merge-multiple: true
       - name: Install rattler-build
         run: |
-          curl -SsL "https://github.com/prefix-dev/rattler-build/releases/latest/download/rattler-build-x86_64-unknown-linux-musl" -o rattler-build
-          chmod +x rattler-build
+          curl -SsL "https://github.com/prefix-dev/rattler-build/releases/latest/download/rattler-build-x86_64-unknown-linux-musl" -o /usr/local/bin/rattler-build
+          chmod +x /usr/local/bin/rattler-build
       - name: Build acts
         run: |
-          ./rattler-build build \
+          rattler-build build \
             --recipe recipes/acts/ \
             --channel local-channel/ \
             --channel conda-forge \
@@ -177,7 +168,6 @@ jobs:
   build-irt:
     needs: [build-dd4hep]
     runs-on: ubuntu-latest
-    container: condaforge/linux-anvil-cos7-x86_64
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
@@ -187,11 +177,11 @@ jobs:
           merge-multiple: true
       - name: Install rattler-build
         run: |
-          curl -SsL "https://github.com/prefix-dev/rattler-build/releases/latest/download/rattler-build-x86_64-unknown-linux-musl" -o rattler-build
-          chmod +x rattler-build
+          curl -SsL "https://github.com/prefix-dev/rattler-build/releases/latest/download/rattler-build-x86_64-unknown-linux-musl" -o /usr/local/bin/rattler-build
+          chmod +x /usr/local/bin/rattler-build
       - name: Build irt
         run: |
-          ./rattler-build build \
+          rattler-build build \
             --recipe recipes/irt/ \
             --channel local-channel/ \
             --channel conda-forge \
@@ -204,7 +194,6 @@ jobs:
   build-epic:
     needs: [build-dd4hep, build-acts]
     runs-on: ubuntu-latest
-    container: condaforge/linux-anvil-cos7-x86_64
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
@@ -214,11 +203,11 @@ jobs:
           merge-multiple: true
       - name: Install rattler-build
         run: |
-          curl -SsL "https://github.com/prefix-dev/rattler-build/releases/latest/download/rattler-build-x86_64-unknown-linux-musl" -o rattler-build
-          chmod +x rattler-build
+          curl -SsL "https://github.com/prefix-dev/rattler-build/releases/latest/download/rattler-build-x86_64-unknown-linux-musl" -o /usr/local/bin/rattler-build
+          chmod +x /usr/local/bin/rattler-build
       - name: Build epic
         run: |
-          ./rattler-build build \
+          rattler-build build \
             --recipe recipes/epic/ \
             --channel local-channel/ \
             --channel conda-forge \
@@ -231,7 +220,6 @@ jobs:
   build-npsim:
     needs: [build-dd4hep]
     runs-on: ubuntu-latest
-    container: condaforge/linux-anvil-cos7-x86_64
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
@@ -241,11 +229,11 @@ jobs:
           merge-multiple: true
       - name: Install rattler-build
         run: |
-          curl -SsL "https://github.com/prefix-dev/rattler-build/releases/latest/download/rattler-build-x86_64-unknown-linux-musl" -o rattler-build
-          chmod +x rattler-build
+          curl -SsL "https://github.com/prefix-dev/rattler-build/releases/latest/download/rattler-build-x86_64-unknown-linux-musl" -o /usr/local/bin/rattler-build
+          chmod +x /usr/local/bin/rattler-build
       - name: Build npsim
         run: |
-          ./rattler-build build \
+          rattler-build build \
             --recipe recipes/npsim/ \
             --channel local-channel/ \
             --channel conda-forge \
@@ -261,7 +249,6 @@ jobs:
   build-algorithms:
     needs: [build-acts, build-dd4hep, build-edm4eic, build-edm4hep, build-podio]
     runs-on: ubuntu-latest
-    container: condaforge/linux-anvil-cos7-x86_64
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
@@ -271,11 +258,11 @@ jobs:
           merge-multiple: true
       - name: Install rattler-build
         run: |
-          curl -SsL "https://github.com/prefix-dev/rattler-build/releases/latest/download/rattler-build-x86_64-unknown-linux-musl" -o rattler-build
-          chmod +x rattler-build
+          curl -SsL "https://github.com/prefix-dev/rattler-build/releases/latest/download/rattler-build-x86_64-unknown-linux-musl" -o /usr/local/bin/rattler-build
+          chmod +x /usr/local/bin/rattler-build
       - name: Build algorithms
         run: |
-          ./rattler-build build \
+          rattler-build build \
             --recipe recipes/algorithms/ \
             --channel local-channel/ \
             --channel conda-forge \
@@ -291,7 +278,6 @@ jobs:
   build-eicrecon:
     needs: [build-jana2, build-dd4hep, build-acts, build-edm4eic, build-edm4hep, build-podio, build-algorithms, build-irt]
     runs-on: ubuntu-latest
-    container: condaforge/linux-anvil-cos7-x86_64
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
@@ -301,11 +287,11 @@ jobs:
           merge-multiple: true
       - name: Install rattler-build
         run: |
-          curl -SsL "https://github.com/prefix-dev/rattler-build/releases/latest/download/rattler-build-x86_64-unknown-linux-musl" -o rattler-build
-          chmod +x rattler-build
+          curl -SsL "https://github.com/prefix-dev/rattler-build/releases/latest/download/rattler-build-x86_64-unknown-linux-musl" -o /usr/local/bin/rattler-build
+          chmod +x /usr/local/bin/rattler-build
       - name: Build eicrecon
         run: |
-          ./rattler-build build \
+          rattler-build build \
             --recipe recipes/eicrecon/ \
             --channel local-channel/ \
             --channel conda-forge \
@@ -342,15 +328,15 @@ jobs:
           merge-multiple: true
       - name: Install rattler-build
         run: |
-          curl -SsL "https://github.com/prefix-dev/rattler-build/releases/latest/download/rattler-build-x86_64-unknown-linux-musl" -o rattler-build
-          chmod +x rattler-build
+          curl -SsL "https://github.com/prefix-dev/rattler-build/releases/latest/download/rattler-build-x86_64-unknown-linux-musl" -o /usr/local/bin/rattler-build
+          chmod +x /usr/local/bin/rattler-build
       - name: Upload to ghcr.io
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           for pkg in packages/**/*.conda; do
             echo "Uploading $(basename $pkg)..."
-            ./rattler-build upload ghcr \
+            rattler-build upload ghcr \
               "$pkg" \
               --owner eic \
               --repo eic-conda \
