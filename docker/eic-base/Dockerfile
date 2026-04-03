@@ -27,10 +27,12 @@ ARG CXX_STANDARD=20
 # ---------------------------------------------------------------------------#
 RUN apt-get update && \
     apt-get install -y \
-        libxerces-c3-dev libexpat-dev qtbase5-dev libqt5opengl5-dev libxmu-dev \
-        libspdlog-dev libtbb-dev libboost-all-dev \
-        libocct-foundation-dev occt-misc libocct-draw-dev libocct-data-exchange-dev \
-        libzmq3-dev python3-pybind11 \
+        libboost-all-dev libexpat-dev \
+        libmsgsl-dev \
+        libocct-data-exchange-dev libocct-draw-dev libocct-foundation-dev \
+        libqt5opengl5-dev libspdlog-dev libtbb-dev \
+        libxerces-c3-dev libxmu-dev libzmq3-dev \
+        occt-misc python3-pybind11 qtbase5-dev \
     && apt-get clean && apt-get autoremove -y && rm -rf /var/lib/apt/lists/*
 
 
@@ -494,36 +496,39 @@ RUN set -ex && \
 ENV LD_LIBRARY_PATH="${IRT_INS_PATH}/lib:${LD_LIBRARY_PATH}" \
     CMAKE_PREFIX_PATH="${IRT_INS_PATH}/lib/cmake/IRT:${CMAKE_PREFIX_PATH}"
 
-
-### ---------------------------------------------------------------------- ###
-###          NPDet build                                                   ###
-### ---------------------------------------------------------------------- ###
-# Not in spack EIC env; kept for compatibility with full-stack
-ARG VERSION_NPDET=v1.4.1
-ENV NPDET_SRC_PATH=${APP_ROOT}/npdet-src \
-    NPDET_BLD_PATH=${APP_ROOT}/npdet-build \
-    NPDET_INS_PATH=${APP_ROOT}/npdet
-
-RUN set -ex && \
-    git clone --branch ${VERSION_NPDET} --depth 1 https://eicweb.phy.anl.gov/EIC/NPDet.git "${NPDET_SRC_PATH}" && \
-    mkdir -p "${NPDET_BLD_PATH}" && cd "${NPDET_BLD_PATH}" && \
-    cmake \
-      -DCMAKE_INSTALL_PREFIX="${NPDET_INS_PATH}" \
-      -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-      -DCMAKE_CXX_STANDARD=${CXX_STANDARD} \
-      "${NPDET_SRC_PATH}" && \
-    cmake --build . --target install -j"${BUILD_THREADS}" && \
-    rm -rf "${NPDET_BLD_PATH}" "${NPDET_SRC_PATH}"
-
-ENV PATH="${NPDET_INS_PATH}/bin:${PATH}" \
-    LD_LIBRARY_PATH="${NPDET_INS_PATH}/lib:${LD_LIBRARY_PATH}" \
-    CMAKE_PREFIX_PATH="${NPDET_INS_PATH}:${CMAKE_PREFIX_PATH}"
+#
+#### ---------------------------------------------------------------------- ###
+####          NPDet build                                                   ###
+#### ---------------------------------------------------------------------- ###
+## Not in spack EIC env; kept for compatibility with full-stack
+#ARG VERSION_NPDET=v1.4.1
+#ENV NPDET_SRC_PATH=${APP_ROOT}/npdet-src \
+#    NPDET_BLD_PATH=${APP_ROOT}/npdet-build \
+#    NPDET_INS_PATH=${APP_ROOT}/npdet
+#
+#RUN set -ex && \
+#    git clone --branch ${VERSION_NPDET} --depth 1 https://eicweb.phy.anl.gov/EIC/NPDet.git "${NPDET_SRC_PATH}" && \
+#    mkdir -p "${NPDET_BLD_PATH}" && cd "${NPDET_BLD_PATH}" && \
+#    cmake \
+#      -DCMAKE_INSTALL_PREFIX="${NPDET_INS_PATH}" \
+#      -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+#      -DCMAKE_CXX_STANDARD=${CXX_STANDARD} \
+#      "${NPDET_SRC_PATH}" && \
+#    cmake --build . --target install -j"${BUILD_THREADS}" && \
+#    rm -rf "${NPDET_BLD_PATH}" "${NPDET_SRC_PATH}"
+#
+#ENV PATH="${NPDET_INS_PATH}/bin:${PATH}" \
+#    LD_LIBRARY_PATH="${NPDET_INS_PATH}/lib:${LD_LIBRARY_PATH}" \
+#    CMAKE_PREFIX_PATH="${NPDET_INS_PATH}:${CMAKE_PREFIX_PATH}"
 
 
 ### ---------------------------------------------------------------------- ###
 ###          Algorithms build                                              ###
 ### ---------------------------------------------------------------------- ###
 # spack: algorithms @1.2.0
+# Requires: libmsgsl-dev (Microsoft GSL) — installed in the OS deps block above.
+# nlohmann-json3-dev is deliberately not installed (see ubuntu-root notes) to
+# avoid ABI namespace conflicts with the ACTS-bundled copy.
 ARG VERSION_ALGORITHMS=v1.2.0
 ENV ALGORITHMS_SRC_PATH=${APP_ROOT}/algorithms-src \
     ALGORITHMS_BLD_PATH=${APP_ROOT}/algorithms-build \
@@ -544,30 +549,30 @@ ENV LD_LIBRARY_PATH="${ALGORITHMS_INS_PATH}/lib:${LD_LIBRARY_PATH}" \
     CMAKE_PREFIX_PATH="${ALGORITHMS_INS_PATH}:${CMAKE_PREFIX_PATH}"
 
 
-### ---------------------------------------------------------------------- ###
-###          JANA4ML4FPGA build                                            ###
-### ---------------------------------------------------------------------- ###
-# Not in spack EIC env; kept for compatibility with full-stack
-ARG VERSION_JANA4ML4FPGA=main
-ENV JANA4ML4FPGA_SRC_PATH=${APP_ROOT}/jana4ml4fpga-src \
-    JANA4ML4FPGA_BLD_PATH=${APP_ROOT}/jana4ml4fpga-build \
-    JANA4ML4FPGA_INS_PATH=${APP_ROOT}/jana4ml4fpga
-
-RUN set -ex && \
-    git clone --branch ${VERSION_JANA4ML4FPGA} --depth 1 https://github.com/JeffersonLab/JANA4ML4FPGA.git "${JANA4ML4FPGA_SRC_PATH}" && \
-    mkdir -p "${JANA4ML4FPGA_BLD_PATH}" && cd "${JANA4ML4FPGA_BLD_PATH}" && \
-    cmake \
-      -DCMAKE_INSTALL_PREFIX="${JANA4ML4FPGA_INS_PATH}" \
-      -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-      -DCMAKE_CXX_STANDARD=${CXX_STANDARD} \
-      "${JANA4ML4FPGA_SRC_PATH}" && \
-    cmake --build . --target install -j"${BUILD_THREADS}" && \
-    rm -rf "${JANA4ML4FPGA_BLD_PATH}" "${JANA4ML4FPGA_SRC_PATH}"
-
-ENV JANA_PLUGIN_PATH="${JANA4ML4FPGA_INS_PATH}/plugins:${JANA_PLUGIN_PATH}" \
-    PATH="${JANA4ML4FPGA_INS_PATH}/bin:${PATH}" \
-    LD_LIBRARY_PATH="${JANA4ML4FPGA_INS_PATH}/lib:${LD_LIBRARY_PATH}" \
-    CMAKE_PREFIX_PATH="${JANA4ML4FPGA_INS_PATH}:${CMAKE_PREFIX_PATH}"
+#### ---------------------------------------------------------------------- ###
+####          JANA4ML4FPGA build                                            ###
+#### ---------------------------------------------------------------------- ###
+## Not in spack EIC env; kept for compatibility with full-stack
+#ARG VERSION_JANA4ML4FPGA=main
+#ENV JANA4ML4FPGA_SRC_PATH=${APP_ROOT}/jana4ml4fpga-src \
+#    JANA4ML4FPGA_BLD_PATH=${APP_ROOT}/jana4ml4fpga-build \
+#    JANA4ML4FPGA_INS_PATH=${APP_ROOT}/jana4ml4fpga
+#
+#RUN set -ex && \
+#    git clone --branch ${VERSION_JANA4ML4FPGA} --depth 1 https://github.com/JeffersonLab/JANA4ML4FPGA.git "${JANA4ML4FPGA_SRC_PATH}" && \
+#    mkdir -p "${JANA4ML4FPGA_BLD_PATH}" && cd "${JANA4ML4FPGA_BLD_PATH}" && \
+#    cmake \
+#      -DCMAKE_INSTALL_PREFIX="${JANA4ML4FPGA_INS_PATH}" \
+#      -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+#      -DCMAKE_CXX_STANDARD=${CXX_STANDARD} \
+#      "${JANA4ML4FPGA_SRC_PATH}" && \
+#    cmake --build . --target install -j"${BUILD_THREADS}" && \
+#    rm -rf "${JANA4ML4FPGA_BLD_PATH}" "${JANA4ML4FPGA_SRC_PATH}"
+#
+#ENV JANA_PLUGIN_PATH="${JANA4ML4FPGA_INS_PATH}/plugins:${JANA_PLUGIN_PATH}" \
+#    PATH="${JANA4ML4FPGA_INS_PATH}/bin:${PATH}" \
+#    LD_LIBRARY_PATH="${JANA4ML4FPGA_INS_PATH}/lib:${LD_LIBRARY_PATH}" \
+#    CMAKE_PREFIX_PATH="${JANA4ML4FPGA_INS_PATH}:${CMAKE_PREFIX_PATH}"
 
 
 SHELL ["/bin/bash", "-c"]

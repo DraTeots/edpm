@@ -29,18 +29,27 @@ SHELL ["bash", "-ex", "-c"]
 
 
 # Install OS dependencies
+# Notes:
+#   - nlohmann-json3-dev deliberately omitted: ACTS bundles its own (v3.10.5),
+#     and the system copy (v3.11.3) causes ABI namespace conflicts downstream.
+#   - libfmt-dev deliberately omitted: Ubuntu ships 10.x but PODIO/EIC stack
+#     needs fmt 11+; eic-base builds fmt from source.
 RUN apt-get update &&\
-    apt-get install -y python3-dev python3-pip python3-jinja2 python3-yaml python3-numpy  dos2unix \
-                       sudo git cmake gdb ninja-build apt-utils bash ccache clang valgrind gfortran g++ gcc curl clang-tools-18 clang-tidy-18 \
-                       dialog apt-utils dpkg-dev tzdata binutils unminimize libfmt-dev locales\
-                       libftgl-dev libxml2-dev libldap2-dev  \
-                       libfftw3-dev libmysqlclient-dev libavahi-compat-libdnssd-dev  \
-                       libcfitsio-dev libglu1-mesa-dev libkrb5-dev libpcre3-dev libglew-dev  \
-                       libgraphviz-dev \
-                       libgsl-dev qtwebengine5-dev nlohmann-json3-dev liblz4-dev \
-                       libgl2ps-dev liblzma-dev libxxhash-dev libzstd-dev \
-                       libx11-dev libxft-dev libxpm-dev libxext-dev \
-                       xrootd-client libxrootd-client-dev libxrootd-server-dev &&\
+    apt-get install -y \
+        apt-utils bash binutils ccache clang clang-tidy-18 clang-tools-18 \
+        cmake curl dialog dos2unix dpkg-dev \
+        g++ gcc gdb gfortran git \
+        locales ninja-build sudo tzdata unminimize valgrind \
+        python3-dev python3-jinja2 python3-numpy python3-pip python3-yaml \
+        libavahi-compat-libdnssd-dev libcfitsio-dev libfftw3-dev \
+        libftgl-dev libgl2ps-dev libglew-dev libglu1-mesa-dev \
+        libgraphviz-dev libgsl-dev \
+        libkrb5-dev libldap2-dev liblz4-dev liblzma-dev \
+        libmysqlclient-dev libpcre3-dev \
+        libx11-dev libxext-dev libxft-dev libxml2-dev libxpm-dev \
+        libxxhash-dev libzstd-dev \
+        qtwebengine5-dev \
+        xrootd-client libxrootd-client-dev libxrootd-server-dev &&\
     apt-get clean && apt-get autoremove -y && rm -rf /var/lib/apt/lists/*
 
 
