@@ -39,7 +39,8 @@ RUN apt-get update &&\
                        libgraphviz-dev \
                        libgsl-dev qtwebengine5-dev nlohmann-json3-dev liblz4-dev \
                        libgl2ps-dev liblzma-dev libxxhash-dev libzstd-dev \
-                       libx11-dev libxft-dev libxpm-dev libxext-dev &&\
+                       libx11-dev libxft-dev libxpm-dev libxext-dev \
+                       xrootd-client libxrootd-client-dev libxrootd-server-dev &&\
     apt-get clean && apt-get autoremove -y && rm -rf /var/lib/apt/lists/*
 
 
@@ -89,7 +90,7 @@ RUN set -ex && \
       -DCMAKE_CXX_STANDARD=${CXX_STANDARD} \
       -Droot7=ON \
       -Dgdml=ON \
-      -Dxrootd=OFF \
+      -Dxrootd=ON \
       -Dmysql=OFF \
       -Dpythia6=OFF \
       -Dpythia6_nolink=OFF \

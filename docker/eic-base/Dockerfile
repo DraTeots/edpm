@@ -357,6 +357,26 @@ ENV LD_LIBRARY_PATH="${ACTSSVG_INS_PATH}/lib:${LD_LIBRARY_PATH}" \
 
 
 ### ---------------------------------------------------------------------- ###
+###          OnnxRuntime build (prebuilt CPU-only binary)                  ###
+### ---------------------------------------------------------------------- ###
+# spack: onnx @1.17.0  — matches onnxruntime v1.17.0 C++ library
+# No GPU support; ACTS and EICrecon require this to compile with +onnx.
+ARG VERSION_ONNXRUNTIME=1.17.0
+ENV ONNXRUNTIME_INS_PATH=${APP_ROOT}/onnxruntime
+
+RUN set -ex && \
+    curl -L \
+      "https://github.com/microsoft/onnxruntime/releases/download/v${VERSION_ONNXRUNTIME}/onnxruntime-linux-x64-${VERSION_ONNXRUNTIME}.tgz" \
+      | tar xz -C "${APP_ROOT}" && \
+    mv "${APP_ROOT}/onnxruntime-linux-x64-${VERSION_ONNXRUNTIME}" "${ONNXRUNTIME_INS_PATH}"
+
+ENV OnnxRuntime_ROOT=${ONNXRUNTIME_INS_PATH} \
+    ONNXRUNTIME_ROOT_DIR=${ONNXRUNTIME_INS_PATH} \
+    LD_LIBRARY_PATH="${ONNXRUNTIME_INS_PATH}/lib:${LD_LIBRARY_PATH}" \
+    CMAKE_PREFIX_PATH="${ONNXRUNTIME_INS_PATH}:${CMAKE_PREFIX_PATH}"
+
+
+### ---------------------------------------------------------------------- ###
 ###          ACTS build                                                    ###
 ### ---------------------------------------------------------------------- ###
 # spack: acts @44.4.0 cxxstd=20
@@ -379,6 +399,7 @@ RUN set -ex && \
       -DACTS_BUILD_PLUGIN_DD4HEP=ON \
       -DACTS_BUILD_PLUGIN_JSON=ON \
       -DACTS_BUILD_PLUGIN_ACTSVG=ON \
+      -DACTS_BUILD_PLUGIN_ONNX=ON \
       -DACTS_BUILD_PLUGIN_EDM4HEP=ON \
       -DACTS_BUILD_PLUGIN_PODIO=ON \
       -DACTS_BUILD_PLUGIN_GEANT4=ON \
