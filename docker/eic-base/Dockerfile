@@ -35,6 +35,33 @@ RUN apt-get update && \
 
 
 ### ---------------------------------------------------------------------- ###
+###          fmt build                                                     ###
+### ---------------------------------------------------------------------- ###
+# spack: fmt @11.2.0:11  cxxstd=20
+# Ubuntu 24.04 ships libfmt-dev 10.1.1; fmt::println(FILE*,...) requires 11+.
+# PODIO v01-06 and other packages need the FILE* overload, so build from source.
+ARG VERSION_FMT=11.2.0
+ENV FMT_SRC_PATH=${APP_ROOT}/fmt-src \
+    FMT_BLD_PATH=${APP_ROOT}/fmt-build \
+    FMT_INS_PATH=${APP_ROOT}/fmt
+
+RUN set -ex && \
+    git clone --branch ${VERSION_FMT} --depth 1 https://github.com/fmtlib/fmt.git "${FMT_SRC_PATH}" && \
+    mkdir -p "${FMT_BLD_PATH}" && cd "${FMT_BLD_PATH}" && \
+    cmake \
+      -DCMAKE_INSTALL_PREFIX="${FMT_INS_PATH}" \
+      -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+      -DCMAKE_CXX_STANDARD=${CXX_STANDARD} \
+      -DFMT_TEST=OFF \
+      "${FMT_SRC_PATH}" && \
+    cmake --build . --target install -j"${BUILD_THREADS}" && \
+    rm -rf "${FMT_BLD_PATH}" "${FMT_SRC_PATH}"
+
+ENV LD_LIBRARY_PATH="${FMT_INS_PATH}/lib:${LD_LIBRARY_PATH}" \
+    CMAKE_PREFIX_PATH="${FMT_INS_PATH}/lib/cmake/fmt:${CMAKE_PREFIX_PATH}"
+
+
+### ---------------------------------------------------------------------- ###
 ###          CLHEP build                                                   ###
 ### ---------------------------------------------------------------------- ###
 # spack: clhep @2.4.7.1 cxxstd=20
@@ -213,7 +240,6 @@ RUN set -ex && \
       -DCMAKE_CXX_STANDARD=${CXX_STANDARD} \
       -DBUILD_TESTING=OFF \
       -DENABLE_RNTUPLE=ON \
-      -DPODIO_BUILD_DATASOURCE=ON \
       "${PODIO_SRC_PATH}" && \
     cmake --build . --target install -j"${BUILD_THREADS}" && \
     rm -rf "${PODIO_BLD_PATH}" "${PODIO_SRC_PATH}"

@@ -56,8 +56,11 @@ ENV CLICOLOR_FORCE=1      \
 # Install EDPM v3 and set the top_dir
 RUN python3 -m pip install --user --upgrade --force-reinstall --break-system-packages ruamel.yaml click appdirs
 
-# Set clang as default
-RUN update-alternatives --install /usr/bin/c++ c++ /usr/bin/clang++-18 60
+# Set clang as default for both C++ and C compilers
+# ROOT v6-38+ bundled LLVM uses Clang-specific flags (e.g. -Wunguarded-availability-new)
+# that GCC does not understand, so cc must also be clang.
+RUN update-alternatives --install /usr/bin/c++ c++ /usr/bin/clang++-18 60 && \
+    update-alternatives --install /usr/bin/cc  cc  /usr/bin/clang-18    60
 
 WORKDIR ${APP_ROOT}
 ENV PATH="$PATH:/root/.local/bin"
