@@ -14,10 +14,9 @@ eic-full           + EPIC detector geometry + EICrecon reconstruction framework
 
 ## Quick start
 
-All commands run from the `docker/` directory.  The same `docker-compose.yml`
-works with both `docker compose` and `docker buildx bake`.
+All commands run from the `docker/` directory.
 
-### docker compose
+### docker compose (simplest, works out of the box)
 
 ```bash
 # Build all three images in dependency order
@@ -42,44 +41,61 @@ IMAGE_TAG=v1.0 docker compose build
 docker compose run --rm eic-full
 ```
 
-### docker buildx bake
+### docker buildx bake (advanced: linked targets, dry-run)
 
-Same file, more features (dry-run, multi-platform):
+Uses `docker-bake.hcl`.  The `contexts` blocks wire `FROM` dependencies at
+the BuildKit level so targets build in the correct order.
+
+**One-time setup** — linked targets require the `docker-container` driver
+(the default `docker` driver ignores `contexts` and builds everything in
+parallel):
 
 ```bash
-# Build all
-docker buildx bake
+docker buildx create --name eic-builder --driver docker-container --use
+```
 
-# Build one target (+ deps)
-docker buildx bake eic-base
+Then:
 
-# Build + push
-docker buildx bake --push
+```bash
+# Build + push all (sequential via linked targets)
+docker buildx bake -f docker-bake.hcl --push
+
+# Build one target (+ its deps automatically)
+docker buildx bake -f docker-bake.hcl --push eic-base
+
+# No cache + push
+docker buildx bake -f docker-bake.hcl --no-cache --push
 
 # Dry run — print resolved config as JSON, build nothing
-docker buildx bake --print
-
-# No cache
-docker buildx bake --no-cache
+docker buildx bake -f docker-bake.hcl --print
 
 # Custom threads + tag
-BUILD_THREADS=24 IMAGE_TAG=v1.0 docker buildx bake
+BUILD_THREADS=24 IMAGE_TAG=v1.0 docker buildx bake -f docker-bake.hcl --push
 ```
+
+> **Note:** the `docker-container` driver does not support `--load` (importing
+> into local Docker). Use `--push` to push to a registry.  To build locally
+> without pushing, use `docker compose build` instead.
+>
+> Always pass `-f docker-bake.hcl` — without it bake discovers
+> `docker-compose.yml` first (higher in lookup order) and launches all targets
+> in parallel since compose `depends_on` is a runtime concept, not a build
+> dependency.
 
 ### PowerShell
 
 Environment variables are set differently in PowerShell:
 
 ```powershell
-# Set variables then build
+# Set variables then build (compose)
 $env:BUILD_THREADS = "24"
 docker compose build
 
 # Or one-liner with semicolon
 $env:BUILD_THREADS = "24"; docker compose build
 
-# Same for bake
-$env:BUILD_THREADS = "24"; docker buildx bake
+# Bake
+$env:BUILD_THREADS = "24"; docker buildx bake -f docker-bake.hcl --push
 
 # Custom tag
 $env:IMAGE_TAG = "v1.0"; docker compose build
@@ -110,7 +126,7 @@ python3 docker/build_images.py --dry-run
 ```bash
 docker buildx build --tag eicdev/ubuntu-root:latest --build-arg BUILD_THREADS=24 docker/ubuntu-root
 docker buildx build --tag eicdev/eic-base:latest    --build-arg BUILD_THREADS=24 docker/eic-base
-docker buildx build --tag eicdev/eic-full:latest     --build-arg BUILD_THREADS=24 docker/eic-full
+docker buildx build --tag eicdev/eic-full:latest    --build-arg BUILD_THREADS=24 docker/eic-full
 ```
 
 ## Build arguments
@@ -189,7 +205,8 @@ $env:BUILDX_EXPERIMENTAL = "1"; docker buildx debug --invoke bash build --progre
 ```
 docker/
   README.md              This file
-  docker-compose.yml     Build config — works with both compose and bake
+  docker-compose.yml     For docker compose build/push/run (works out of the box)
+  docker-bake.hcl        For docker buildx bake (requires docker-container driver)
   build_images.py        Python build script (alternative)
   ubuntu-root/
     Dockerfile           Layer 1: Ubuntu 24.04 + CERN ROOT

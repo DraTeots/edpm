@@ -30,10 +30,10 @@ SHELL ["bash", "-ex", "-c"]
 
 # Install OS dependencies
 # Notes:
-#   - nlohmann-json3-dev deliberately omitted: ACTS bundles its own (v3.10.5),
-#     and the system copy (v3.11.3) causes ABI namespace conflicts downstream.
-#   - libfmt-dev deliberately omitted: Ubuntu ships 10.x but PODIO/EIC stack
-#     needs fmt 11+; eic-base builds fmt from source.
+#   - nlohmann-json3-dev omitted: we build nlohmann/json from source (below)
+#     so ROOT and all downstream packages use the same version/ABI namespace.
+#   - libfmt-dev omitted: Ubuntu ships 10.x but PODIO/EIC stack needs fmt 11+;
+#     eic-base builds fmt from source.
 RUN apt-get update &&\
     apt-get install -y \
         apt-utils bash binutils ccache clang clang-tidy-18 clang-tools-18 \
@@ -83,6 +83,26 @@ ARG BUILD_THREADS=8
 ARG CXX_STANDARD=20
 
 ### ---------------------------------------------------------------------- ###
+###          nlohmann/json (header-only, single copy for all images)       ###
+### ---------------------------------------------------------------------- ###
+# Built once here so ROOT, EDM4HEP, ACTS, Algorithms all use the same copy
+# with the same ABI namespace.  ROOT is told -Dbuiltin_nlohmannjson=OFF
+# so it links against this rather than bundling its own version.
+ARG VERSION_NLOHMANN_JSON=v3.11.3
+ENV NLOHMANN_JSON_INS_PATH=${APP_ROOT}/nlohmann-json
+
+RUN set -ex && \
+    git clone --branch ${VERSION_NLOHMANN_JSON} --depth 1 https://github.com/nlohmann/json.git /tmp/nlohmann-json-src && \
+    cmake -S /tmp/nlohmann-json-src -B /tmp/nlohmann-json-build \
+      -DCMAKE_INSTALL_PREFIX="${NLOHMANN_JSON_INS_PATH}" \
+      -DJSON_BuildTests=OFF && \
+    cmake --build /tmp/nlohmann-json-build --target install && \
+    rm -rf /tmp/nlohmann-json-src /tmp/nlohmann-json-build
+
+ENV CMAKE_PREFIX_PATH="${NLOHMANN_JSON_INS_PATH}:${CMAKE_PREFIX_PATH}"
+
+
+### ---------------------------------------------------------------------- ###
 ###          ROOT build (no EDPM)                                          ###
 ### ---------------------------------------------------------------------- ###
 ARG CERN_ROOT_VERSION=v6-38-00
@@ -113,6 +133,7 @@ RUN set -ex && \
       -Dssl=ON \
       -Dmlp=ON \
       -Dtmva=ON \
+      -Dbuiltin_nlohmannjson=OFF \
       -Wno-dev \
       "${CERN_ROOT_SRC_PATH}" && \
     \

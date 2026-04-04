@@ -36,6 +36,8 @@ RUN apt-get update && \
     && apt-get clean && apt-get autoremove -y && rm -rf /var/lib/apt/lists/*
 
 
+
+
 ### ---------------------------------------------------------------------- ###
 ###          fmt build                                                     ###
 ### ---------------------------------------------------------------------- ###
@@ -440,7 +442,7 @@ RUN set -ex && \
 
 ENV ACTS_DIR=${ACTS_INS_PATH} \
     LD_LIBRARY_PATH="${ACTS_INS_PATH}/lib:${LD_LIBRARY_PATH}" \
-    CMAKE_PREFIX_PATH="${ACTS_INS_PATH}/lib/cmake/Acts:${ACTS_INS_PATH}/lib/cmake/nlohmann_json:${ACTS_INS_PATH}/lib/cmake/ActsDD4hep:${CMAKE_PREFIX_PATH}"
+    CMAKE_PREFIX_PATH="${ACTS_INS_PATH}/lib/cmake/Acts:${ACTS_INS_PATH}/lib/cmake/ActsDD4hep:${CMAKE_PREFIX_PATH}"
 
 
 ### ---------------------------------------------------------------------- ###
@@ -527,8 +529,6 @@ ENV LD_LIBRARY_PATH="${IRT_INS_PATH}/lib:${LD_LIBRARY_PATH}" \
 ### ---------------------------------------------------------------------- ###
 # spack: algorithms @1.2.0
 # Requires: libmsgsl-dev (Microsoft GSL) — installed in the OS deps block above.
-# nlohmann-json3-dev is deliberately not installed (see ubuntu-root notes) to
-# avoid ABI namespace conflicts with the ACTS-bundled copy.
 ARG VERSION_ALGORITHMS=v1.2.0
 ENV ALGORITHMS_SRC_PATH=${APP_ROOT}/algorithms-src \
     ALGORITHMS_BLD_PATH=${APP_ROOT}/algorithms-build \
