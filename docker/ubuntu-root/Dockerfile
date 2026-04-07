@@ -99,7 +99,7 @@ RUN set -ex && \
     cmake --build /tmp/nlohmann-json-build --target install && \
     rm -rf /tmp/nlohmann-json-src /tmp/nlohmann-json-build
 
-ENV CMAKE_PREFIX_PATH="${NLOHMANN_JSON_INS_PATH}:${CMAKE_PREFIX_PATH}"
+ENV CMAKE_PREFIX_PATH="${NLOHMANN_JSON_INS_PATH}:${NLOHMANN_JSON_INS_PATH}/share/cmake/nlohmann_json:${CMAKE_PREFIX_PATH}"
 
 
 ### ---------------------------------------------------------------------- ###
@@ -151,7 +151,7 @@ ENV ROOTSYS=${CERN_ROOT_INS_PATH} \
     SHLIB_PATH="${CERN_ROOT_INS_PATH}/lib" \
     LIBPATH="${CERN_ROOT_INS_PATH}/lib" \
     PYTHONPATH="${CERN_ROOT_INS_PATH}/lib" \
-    CMAKE_PREFIX_PATH="${CERN_ROOT_INS_PATH}" \
+    CMAKE_PREFIX_PATH="${CERN_ROOT_INS_PATH}:${CMAKE_PREFIX_PATH}" \
     JUPYTER_PATH="${CERN_ROOT_INS_PATH}/etc/notebook" \
     JUPYTER_CONFIG_DIR="${CERN_ROOT_INS_PATH}/etc/notebook" \
     CLING_STANDARD_PCH=none

@@ -400,6 +400,38 @@ RUN set -ex && \
       | tar xz -C "${APP_ROOT}" && \
     mv "${APP_ROOT}/onnxruntime-linux-x64-${VERSION_ONNXRUNTIME}" "${ONNXRUNTIME_INS_PATH}"
 
+# The prebuilt binary has no cmake config files.  Write a minimal config +
+# version file so find_package(onnxruntime 1.17) creates the imported target.
+RUN set -ex && \
+    mkdir -p "${ONNXRUNTIME_INS_PATH}/lib/cmake/onnxruntime" && \
+    cat > "${ONNXRUNTIME_INS_PATH}/lib/cmake/onnxruntime/onnxruntimeConfig.cmake" <<'CMEOF'
+if(TARGET onnxruntime::onnxruntime)
+  return()
+endif()
+get_filename_component(_ORT_PREFIX "${CMAKE_CURRENT_LIST_DIR}/../../.." ABSOLUTE)
+add_library(onnxruntime::onnxruntime SHARED IMPORTED)
+set_target_properties(onnxruntime::onnxruntime PROPERTIES
+  IMPORTED_LOCATION             "${_ORT_PREFIX}/lib/libonnxruntime.so"
+  INTERFACE_INCLUDE_DIRECTORIES "${_ORT_PREFIX}/include"
+)
+set(onnxruntime_FOUND TRUE)
+set(onnxruntime_INCLUDE_DIRS "${_ORT_PREFIX}/include")
+set(onnxruntime_LIBRARIES    onnxruntime::onnxruntime)
+unset(_ORT_PREFIX)
+CMEOF
+
+RUN printf '%s\n' \
+      "set(PACKAGE_VERSION \"${VERSION_ONNXRUNTIME}\")" \
+      'if("${PACKAGE_FIND_VERSION}" VERSION_GREATER PACKAGE_VERSION)' \
+      '  set(PACKAGE_VERSION_COMPATIBLE FALSE)' \
+      'else()' \
+      '  set(PACKAGE_VERSION_COMPATIBLE TRUE)' \
+      '  if("${PACKAGE_FIND_VERSION}" VERSION_EQUAL PACKAGE_VERSION)' \
+      '    set(PACKAGE_VERSION_EXACT TRUE)' \
+      '  endif()' \
+      'endif()' \
+      > "${ONNXRUNTIME_INS_PATH}/lib/cmake/onnxruntime/onnxruntimeConfigVersion.cmake"
+
 ENV OnnxRuntime_ROOT=${ONNXRUNTIME_INS_PATH} \
     ONNXRUNTIME_ROOT_DIR=${ONNXRUNTIME_INS_PATH} \
     LD_LIBRARY_PATH="${ONNXRUNTIME_INS_PATH}/lib:${LD_LIBRARY_PATH}" \
