@@ -24,28 +24,9 @@ ARG CXX_STANDARD=20
 
 
 ### ---------------------------------------------------------------------- ###
-###          FastJet Contrib (required by EICrecon, separate from FastJet)  ###
-### ---------------------------------------------------------------------- ###
-# Installs into the existing FastJet prefix so cmake can find it.
-# EICrecon requires >= 1.46.  Using latest available.
-ARG VERSION_FJCONTRIB=1.102
-
-RUN set -ex && \
-    curl -L "https://fastjet.fr/contrib/downloads/fjcontrib-${VERSION_FJCONTRIB}.tar.gz" \
-      | tar xz -C /tmp && \
-    cd "/tmp/fjcontrib-${VERSION_FJCONTRIB}" && \
-    ./configure --fastjet-config="${FASTJET_ROOT}/bin/fastjet-config" && \
-    make -j"${BUILD_THREADS}" && \
-    make install && \
-    make fragile-shared-install && \
-    rm -rf "/tmp/fjcontrib-${VERSION_FJCONTRIB}"
-
-
-### ---------------------------------------------------------------------- ###
 ###          EPIC build (ePIC detector geometry)                            ###
 ### ---------------------------------------------------------------------- ###
-# spack: epic @25.02.0
-ARG VERSION_EPIC=25.02.0
+ARG VERSION_EPIC=main
 ENV EPIC_SRC_PATH=${APP_ROOT}/epic-src \
     EPIC_BLD_PATH=${APP_ROOT}/epic-build \
     EPIC_INS_PATH=${APP_ROOT}/epic
@@ -76,7 +57,7 @@ ENV DETECTOR_PATH="${EPIC_INS_PATH}/share/epic" \
 # Ubuntu 24.04 libspdlog-dev was compiled against system fmt 10.1.1.
 # Our fmt 11.2.0 (built in eic-base) removed fmt::basic_format_string,
 # breaking system spdlog.  Build spdlog from source against our fmt.
-ARG VERSION_SPDLOG=v1.14.1
+ARG VERSION_SPDLOG=v1.17.0
 ENV SPDLOG_INS_PATH=${APP_ROOT}/spdlog
 
 RUN set -ex && \
@@ -98,8 +79,7 @@ ENV CMAKE_PREFIX_PATH="${SPDLOG_INS_PATH}:${CMAKE_PREFIX_PATH}" \
 ### ---------------------------------------------------------------------- ###
 ###          EICrecon build (EIC Reconstruction Framework)                  ###
 ### ---------------------------------------------------------------------- ###
-# spack: eicrecon @1.35.2
-ARG VERSION_EICRECON=v1.35.2
+ARG VERSION_EICRECON=main
 ENV EICRECON_SRC_PATH=${APP_ROOT}/eicrecon-src \
     EICRECON_BLD_PATH=${APP_ROOT}/eicrecon-build \
     EICRECON_INS_PATH=${APP_ROOT}/eicrecon

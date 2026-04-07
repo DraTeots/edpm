@@ -581,6 +581,23 @@ ENV LD_LIBRARY_PATH="${ALGORITHMS_INS_PATH}/lib:${LD_LIBRARY_PATH}" \
     CMAKE_PREFIX_PATH="${ALGORITHMS_INS_PATH}:${CMAKE_PREFIX_PATH}"
 
 
+### ---------------------------------------------------------------------- ###
+###          FastJet Contrib (required by EICrecon, separate from FastJet)  ###
+### ---------------------------------------------------------------------- ###
+# Installs into the existing FastJet prefix so cmake can find it.
+# EICrecon requires >= 1.46.  Using latest available.
+ARG VERSION_FJCONTRIB=1.102
+
+RUN set -ex && \
+    curl -L "https://fastjet.fr/contrib/downloads/fjcontrib-${VERSION_FJCONTRIB}.tar.gz" \
+      | tar xz -C /tmp && \
+    cd "/tmp/fjcontrib-${VERSION_FJCONTRIB}" && \
+    ./configure --fastjet-config="${FASTJET_ROOT}/bin/fastjet-config" && \
+    make -j"${BUILD_THREADS}" && \
+    make install && \
+    make fragile-shared-install && \
+    rm -rf "/tmp/fjcontrib-${VERSION_FJCONTRIB}"
+
 #### ---------------------------------------------------------------------- ###
 ####          JANA4ML4FPGA build                                            ###
 #### ---------------------------------------------------------------------- ###
