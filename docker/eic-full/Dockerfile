@@ -66,6 +66,7 @@ RUN set -ex && \
       -DCMAKE_INSTALL_PREFIX="${SPDLOG_INS_PATH}" \
       -DCMAKE_BUILD_TYPE=RelWithDebInfo \
       -DCMAKE_CXX_STANDARD=${CXX_STANDARD} \
+      -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
       -DSPDLOG_FMT_EXTERNAL=ON \
       -DSPDLOG_BUILD_EXAMPLE=OFF \
       -DSPDLOG_BUILD_TESTS=OFF && \
@@ -91,7 +92,7 @@ RUN set -ex && \
       -DCMAKE_INSTALL_PREFIX="${EICRECON_INS_PATH}" \
       -DCMAKE_BUILD_TYPE=RelWithDebInfo \
       -DCMAKE_CXX_STANDARD=${CXX_STANDARD} \
-      -DCMAKE_CXX_FLAGS="-isystem ${ALGORITHMS_INS_PATH}/include -isystem ${SPDLOG_INS_PATH}/include" \
+      -DCMAKE_CXX_FLAGS="-isystem ${ALGORITHMS_INS_PATH}/include -isystem ${SPDLOG_INS_PATH}/include -isystem ${DD4HEP_INS_PATH}/include" \
       "${EICRECON_SRC_PATH}" && \
     cmake --build . --target install -j"${BUILD_THREADS}" && \
     rm -rf "${EICRECON_BLD_PATH}" "${EICRECON_SRC_PATH}"
