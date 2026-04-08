@@ -36,7 +36,7 @@ variable "IMAGE_TAG" {
 //  Shared build args
 // ---------------------------------------------------------------------
 group "default" {
-  targets = ["ubuntu-root", "eic-base", "eic-full"]
+  targets = ["ubuntu-root", "eic-base", "eic-full", "eic-extra"]
 }
 
 target "_common" {
@@ -81,5 +81,18 @@ target "eic-full" {
   tags       = ["eicdev/eic-full:${IMAGE_TAG}"]
   contexts = {
     "eicdev/eic-base:latest" = "target:eic-base"
+  }
+}
+
+// ---------------------------------------------------------------------
+//  Layer 4: EIC extra tools (rucio client + EIC policy package)
+// ---------------------------------------------------------------------
+target "eic-extra" {
+  inherits   = ["_common"]
+  context    = "./eic-extra"
+  dockerfile = "Dockerfile"
+  tags       = ["eicdev/eic-extra:${IMAGE_TAG}"]
+  contexts = {
+    "eicdev/eic-full:latest" = "target:eic-full"
   }
 }
